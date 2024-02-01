@@ -1,0 +1,88 @@
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+import numpy as np
+import pandas as pd
+import json
+
+SAVE_RESULTS = "reports/predictions/"
+
+
+def make_prediction(model, X_test, y_test, index):
+    """
+    Generate predictions using the provided model and test features.
+
+    :param model: Trained machine learning model.
+    :param X_test: Test data features.
+    :param y_test: Test target values.
+    :return: DataFrame containing the predictions.
+    """
+    y_pred = model.predict(X_test)
+    predictions_df = pd.DataFrame(
+        y_pred, index=index, columns=[f"{col}_pred" for col in y_test.columns]
+    )
+    return predictions_df
+
+
+def calculate_metrics(model_name, y_test, y_pred):
+    """
+    Calculate and return various performance metrics for the model.
+
+    :param model_name: Name of the model used for predictions.
+    :param y_test: Actual target values.
+    :param y_pred: Predicted target values.
+    :return: Dictionary containing calculated metrics.
+    """
+    return {
+        "Model Name": model_name,
+        "MAE": mean_absolute_error(y_test, y_pred),
+        "MSE": mean_squared_error(y_test, y_pred),
+        "RMSE": np.sqrt(mean_squared_error(y_test, y_pred)),
+        "R2 Score": r2_score(y_test, y_pred),
+    }
+
+
+def get_feature_importance(model, X_test, y_test):
+    """
+    Extract feature importance from the trained model, if available.
+
+    :param model: Trained machine learning model.
+    :param X_test: Test data features used for model training.
+    :param y_test: Test data targets used for model training.
+    :return: DataFrame with feature importances.
+    """
+    feat_df = pd.DataFrame()
+    if hasattr(model, "feature_importances_"):
+        importances = model.feature_importances_
+        feat_df = pd.DataFrame(
+            importances, columns=["Feature Importance"], index=X_test.columns
+        )
+    elif hasattr(model, "coef_"):
+        coef_transposed = model.coef_.T
+        feat_df = pd.DataFrame(
+            coef_transposed, columns=y_test.columns, index=X_test.columns
+        )
+    return feat_df
+
+
+def save_predictions(building_id, model_name, predictions):
+    """
+    Save the model predictions to a CSV file.
+
+    :param predictions: DataFrame containing model predictions.
+    :param building_id: Identifier for the building.
+    :param file_path: Path to save the predictions file.
+    """
+    file_name = f"{SAVE_RESULTS}{building_id}_{model_name}_predictions.csv"
+    predictions.to_csv(file_name)
+
+
+def save_metrics(building_id, model_name, metrics):
+    """
+    Save the model results to a json file.
+
+    :param predictions: DataFrame containing model predictions.
+    :param building_id: Identifier for the building.
+    :param file_path: Path to save the metrics dict.
+    """
+    file_name = f"{SAVE_RESULTS}{building_id}_{model_name}_metrics.json"
+    with open(file_name, "w") as json_file:
+        json.dump(metrics, json_file, indent=4)

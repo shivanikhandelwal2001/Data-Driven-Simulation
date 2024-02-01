@@ -1,0 +1,152 @@
+import pandas as pd
+import numpy as np
+import math
+import scipy
+
+INTERIM_DATA_PATH = "data/interim/"
+PROCESSED_DATA_PATH = "data/processed/"
+
+
+def load_preprocess_data(building_id: str, key_features: list) -> pd.DataFrame:
+    """
+    Load and filter preprocessed data based on key features.
+
+    :param building_id: ID of the building.
+    :param key_features: List of features to filter in the dataset.
+    :return: Filtered DataFrame.
+    """
+    data = pd.read_pickle(f"{INTERIM_DATA_PATH}{building_id}_Preprocessed.pkl")
+    feature_columns = [
+        col for col in data.columns if any(word in col for word in key_features)
+    ]
+    return data[feature_columns]
+
+
+def remove_sparse_columns(data: pd.DataFrame, threshold: float = 0.5) -> pd.DataFrame:
+    """
+    Remove columns with a high proportion of missing values based on a threshold.
+
+    :param data: DataFrame from which to remove columns.
+    :param threshold: Threshold for the proportion of missing values.
+    :return: DataFrame with sparse columns removed.
+    """
+    valid_columns = data.columns[data.isna().mean() < threshold]
+    return data[valid_columns]
+
+
+def data_slicing(data: pd.DataFrame, key_columns: list) -> pd.DataFrame:
+    """
+    Slice data dynamically based on the availability of key features.
+
+    :param data: DataFrame to be sliced.
+    :param key_columns: List of key columns for determining the slicing window.
+    :return: Sliced DataFrame.
+    """
+    valid_start = max(data[col].dropna().index.min() for col in key_columns)
+    valid_end = min(data[col].dropna().index.max() for col in key_columns)
+    return data[(data.index >= valid_start) & (data.index <= valid_end)]
+
+
+def mark_outliers_chauvenet(dataset, col, C=2):
+    """
+    Mark outliers in a dataset using Chauvenet's criterion.
+
+    :param dataset: DataFrame containing the data.
+    :param col: Column to check for outliers.
+    :param C: Chauvenet's criterion constant.
+    :return: DataFrame with an added outlier column.
+    """
+    dataset = dataset.copy()
+    mean, std = dataset[col].mean(), dataset[col].std()
+    N = len(dataset.index)
+    criterion = 1.0 / (C * N)
+
+    # Consider the deviation for the data points.
+    deviation = abs(dataset[col] - mean) / std
+
+    # Express the upper and lower bounds.
+    low = -deviation / math.sqrt(C)
+    high = deviation / math.sqrt(C)
+    prob = []
+    mask = []
+
+    for i in range(0, len(dataset.index)):
+        prob.append(
+            1.0 - 0.5 * (scipy.special.erf(high[i]) - scipy.special.erf(low[i]))
+        )
+        mask.append(prob[i] < criterion)
+    dataset[col + "_outlier"] = mask
+    return dataset
+
+
+def remove_outliers(dataset, col):
+    """
+    Remove detected outliers from the dataset for a specified column.
+
+    :param dataset: DataFrame containing the data.
+    :param col: Column from which to remove outliers.
+    :return: DataFrame with outliers removed.
+    """
+    dataset = mark_outliers_chauvenet(dataset, col)
+    dataset.loc[dataset[col + "_outlier"], col] = np.nan
+    dataset.loc[:, col] = dataset[col]
+    n_outliers = len(dataset) - len(dataset[col].dropna())
+    print(f"Removed {n_outliers} from {col}")
+    return dataset
+
+
+def check_nan_values(dataset, remove=False):
+    """
+    Check for NaN values in the dataset, optionally remove them.
+
+    :param dataset: DataFrame to check for NaN values.
+    :param remove: Flag to determine whether to remove NaN values.
+    :return: DataFrame after handling NaN values.
+    """
+    print(f"Size of dataset with missing values {dataset.shape}")
+    print(dataset.isna().sum())
+    if remove:
+        dataset.dropna(inplace=True)
+        print(f"Size of dataset after removing nan values {dataset.shape}")
+    return dataset
+
+
+def create_lags_features(dataset):
+    """
+    Create lagged features for time series columns.
+
+    :param dataset: DataFrame containing the data.
+    :return: DataFrame with lagged features added.
+    """
+    for col in dataset.columns:
+        if ("Air_temperature" in col) or ("Relative_humidity" in col):
+            col_dict = {
+                f"{col}_{l}": dataset[col].shift(l).astype("float32") for l in [1, 2]
+            }
+            dataset = dataset.assign(**col_dict)
+            added_features1 = list(col_dict.keys())
+            print(added_features1)
+    return dataset
+
+
+def fill_missing_values(dataset, method="bfill"):
+    """
+    Fill missing values in the dataset.
+
+    :param dataset: DataFrame to fill missing values in.
+    :param method: Method to use for filling missing values ('bfill' or 'ffill').
+    :return: DataFrame with missing values filled.
+    """
+    dataset = dataset.fillna(method=method)
+    return dataset
+
+
+def save_processed_data(data, building_id):
+    """
+    Save the processed DataFrame as a pickle file.
+
+    :param data: DataFrame to be saved.
+    :param building_id: ID of the building corresponding to the data.
+    """
+    filepath = f"{PROCESSED_DATA_PATH}{building_id}_Processed.pkl"
+    data.to_pickle(filepath)
