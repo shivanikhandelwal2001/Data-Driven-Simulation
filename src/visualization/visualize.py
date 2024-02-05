@@ -26,10 +26,12 @@ COLORS = [
 ]
 
 
-def set_plot_style():
-    """Set standard style for matplotlib plots."""
-    plt.style.use("ggplot")
-    plt.rcParams["figure.figsize"] = (10, 6)
+# Set standard style for matplotlib plots.
+
+plt.style.use("fivethirtyeight")
+plt.rcParams["figure.figsize"] = (20, 5)
+plt.rcParams["figure.dpi"] = 100
+plt.rcParams["lines.linewidth"] = 2
 
 
 def save_figure(fig, file_name):
@@ -43,7 +45,6 @@ def save_figure(fig, file_name):
 
 def plot_pre_processed_raw_data(data, space_data):
     """Plots data for each space and variable from the pre-processed raw data."""
-    set_plot_style()
     for space in space_data:
         for var in space_data[space]:
             plt.figure(figsize=(20, 10))
@@ -62,7 +63,6 @@ def plot_pre_processed_raw_data(data, space_data):
 
 def plot_pre_processed_final_data(result_df):
     """Plots final processed data for each column in the DataFrame."""
-    set_plot_style()
     for df in result_df.columns:
         plt.figure(figsize=(20, 10))
         plt.plot(result_df.index, result_df[df], color=COLORS[0])
@@ -82,7 +82,6 @@ def plot_line(data, column):
 
 def plot_autocorrelation(data, column, lags=40):
     """Plot autocorrelation for a specified column."""
-    set_plot_style()
     autocorrelation = sm.tsa.acf(data[column], nlags=lags, fft=False)
     plt.figure(figsize=(12, 5))
     plt.stem(autocorrelation)
@@ -94,7 +93,6 @@ def plot_autocorrelation(data, column, lags=40):
 
 def plot_partial_autocorrelation(data, column, lags=40):
     """Plot partial autocorrelation for a specified column."""
-    set_plot_style()
     autocorrelation = sm.tsa.pacf(data[column], nlags=lags)
     plt.figure(figsize=(12, 5))
     plt.stem(autocorrelation)
@@ -108,7 +106,6 @@ def two_line_plot_secondary_axis(
     x, y1, y2, y1_name="y1", y2_name="y2", title="", dash_secondary=False
 ):
     """Create a two-line plot with a secondary y-axis."""
-    set_plot_style()
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     fig.add_trace(go.Scatter(x=x, y=y1, name=y1_name), secondary_y=False)
     fig.add_trace(
@@ -132,7 +129,6 @@ def two_line_plot(x, y1, y2, title, y1_name="y1", y2_name="y2"):
 
 def plot_binary_outliers(dataset, col, outlier_col, reset_index=False):
     """Plot binary outliers in the dataset."""
-    set_plot_style()
     dataset = dataset.dropna(subset=[col, outlier_col])
     dataset[outlier_col] = dataset[outlier_col].astype("bool")
 
@@ -155,7 +151,6 @@ def plot_binary_outliers(dataset, col, outlier_col, reset_index=False):
 
 def plot_data_distribution(dataset, col):
     """Plot the data distribution as a violin plot."""
-    set_plot_style()
     sns.violinplot(y=col, data=dataset, inner="box")
     plt.title(f"Distribution of {col}")
     plt.show()

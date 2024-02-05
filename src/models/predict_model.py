@@ -6,7 +6,7 @@ import json
 SAVE_RESULTS = "reports/predictions/"
 
 
-def make_prediction(model, X_test, y_test, index):
+def make_prediction(model, X_test, y_test):
     """
     Generate predictions using the provided model and test features.
 
@@ -17,7 +17,7 @@ def make_prediction(model, X_test, y_test, index):
     """
     y_pred = model.predict(X_test)
     predictions_df = pd.DataFrame(
-        y_pred, index=index, columns=[f"{col}_pred" for col in y_test.columns]
+        y_pred, index=y_test.index, columns=[f"{col}_pred" for col in y_test.columns]
     )
     return predictions_df
 
@@ -40,7 +40,7 @@ def calculate_metrics(model_name, y_test, y_pred):
     }
 
 
-def get_feature_importance(model, X_test, y_test):
+def get_feature_importance(model, feature_columns, target_columns):
     """
     Extract feature importance from the trained model, if available.
 
@@ -53,12 +53,12 @@ def get_feature_importance(model, X_test, y_test):
     if hasattr(model, "feature_importances_"):
         importances = model.feature_importances_
         feat_df = pd.DataFrame(
-            importances, columns=["Feature Importance"], index=X_test.columns
+            importances, columns=["Feature Importance"], index=feature_columns
         )
     elif hasattr(model, "coef_"):
         coef_transposed = model.coef_.T
         feat_df = pd.DataFrame(
-            coef_transposed, columns=y_test.columns, index=X_test.columns
+            coef_transposed, columns=target_columns, index=feature_columns
         )
     return feat_df
 
