@@ -157,10 +157,10 @@ def train_and_evaluate_with_hyperopt(building_id, model_name):
 def process_all_buildings(building_ids, features):
     """Process all buildings."""
     for building_id in building_ids:
-        # print("#" * 20, building_id)
-        # process_building_data(building_id)
-        # sub_data = visualize_building_data(building_id, features)
-        # preprocess_and_feature_engineer(building_id, sub_data)
+        print("#" * 20, building_id)
+        process_building_data(building_id)
+        sub_data = visualize_building_data(building_id, features)
+        preprocess_and_feature_engineer(building_id, sub_data)
         
         for model_name in MODELS.keys():
             # train_and_evaluate(building_id, model_name)
