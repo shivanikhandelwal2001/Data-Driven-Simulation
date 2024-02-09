@@ -97,7 +97,7 @@ def train_and_evaluate(building_id, model_name):
     if model_name not in ["KNN", "MLP"]:
         feat_df = predict_model.get_feature_importance(trained_model, feature_columns, target_columns)
 
-    for target, metric in metrics.items():
+    for target, metric in metrics[model_name].items():
         print(f"Metrics for {target} in {model_name}:\n", metric, "\n")
 
     # for col in y_test.columns:
@@ -129,8 +129,8 @@ def train_and_evaluate_with_hyperopt(building_id, model_name):
                     algo=tpe.suggest,
                     max_evals=100,
                     trials=trials)
-
-        best_params = {key: value for key, value in best.items()}
+        
+        best_params = {key: int(value) if isinstance(value, float) and value.is_integer() else value for key, value in best.items()}
         # if (model_name == "RidgeCV") or (model_name == "MultiTaskLassoCV"):
         #     best_params["alphas"] = [best_params.pop("alpha")]
         
@@ -149,8 +149,9 @@ def train_and_evaluate_with_hyperopt(building_id, model_name):
     
     predict_model.save_predictions(building_id, model_name+"_hyperopt", predictions)
     predict_model.save_metrics(building_id, model_name+"_hyperopt", metrics)
+    predict_model.save_models_results(building_id+"_hyperopt", metrics)
 
-    for target, metric in metrics.items():
+    for target, metric in metrics[model_name].items():
         print(f"Metrics for {target} in {model_name}:\n", metric, "\n")
 
 
@@ -203,4 +204,4 @@ features = [
 ]
 
 # Process all buildings
-process_all_buildings(building_ids[:1], features)
+process_all_buildings(building_ids, features)

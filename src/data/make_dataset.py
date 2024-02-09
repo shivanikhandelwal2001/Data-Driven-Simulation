@@ -27,12 +27,16 @@ def tsv_info(tsv):
         "variableType": tsv.get("variableType"),
         "units": tsv.get("units"),
         "sensorManufacturerModel": f"{sensor.get('manufacturer')} {sensor.get('model')}",
-        "entityId": entity.get("spaceIdRef")
-        if entity.get("id").startswith("Radiator")
-        else entity.get("id"),
-        "roomType": entity.get("id")
-        if entity.get("id").startswith("Radiator")
-        else entity.get("roomType"),
+        "entityId": (
+            entity.get("spaceIdRef")
+            if entity.get("id").startswith("Radiator")
+            else entity.get("id")
+        ),
+        "roomType": (
+            entity.get("id")
+            if entity.get("id").startswith("Radiator")
+            else entity.get("roomType")
+        ),
     }
     return info
 

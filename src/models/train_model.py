@@ -128,7 +128,7 @@ def objective_function(params, model_name, X_train, y_train):
     """
     model = MODELS[model_name](**params)
     score = time_series_cross_validation(model, X_train, y_train)
-    return {'loss': score, 'status': STATUS_OK}
+    return {"loss": score, "status": STATUS_OK}
 
 
 def define_hyperparameters_space(model_name):
@@ -138,72 +138,86 @@ def define_hyperparameters_space(model_name):
     space = {}
     if model_name == "RandomForest":
         space = {
-            'n_estimators': scope.int(hp.quniform('n_estimators', 10, 100, 1)),
-            'max_depth': scope.int(hp.quniform('max_depth', 1, 50, 1)),
-            'min_samples_split': scope.int(hp.quniform('min_samples_split', 2, 20, 1)),
-            'min_samples_leaf': scope.int(hp.quniform('min_samples_leaf', 1, 20, 1)),
+            "n_estimators": scope.int(hp.quniform("n_estimators", 10, 100, 1)),
+            "max_depth": scope.int(hp.quniform("max_depth", 1, 50, 1)),
+            "min_samples_split": scope.int(hp.quniform("min_samples_split", 2, 20, 1)),
+            "min_samples_leaf": scope.int(hp.quniform("min_samples_leaf", 1, 20, 1)),
         }
-        
+            "max_depth": scope.int(hp.quniform("max_depth", 1, 
+
     elif model_name == "RidgeCV":
         space = {
-            'alphas': hp.lognormal('alpha', 0.2, 2),
-            'fit_intercept': hp.choice('fit_intercept', [True, False])
+            "alphas": hp.lognormal("alpha", 0.2, 2),
+            "fit_intercept": hp.choice("fit_intercept", [True, False]),
         }
-        
-    elif  model_name == "MultiTaskLassoCV":
+
+    elif model_name == "MultiTaskLassoCV":
         space = {
-            'alphas': [hp.lognormal('alpha', 0.2, 2)],
-            'fit_intercept': hp.choice('fit_intercept', [True, False])
+            "alphas": [hp.lognormal("alpha", 0.2, 2)],
+            "fit_intercept": hp.choice("fit_intercept", [True, False]),
         }
-        
+
     elif model_name == "ExtraTrees":
         space = {
-            'n_estimators': scope.int(hp.quniform('n_estimators', 10, 100, 1)),
-            'max_depth': scope.int(hp.quniform('max_depth', 1, 50, 1)),
-            'min_samples_split': scope.int(hp.quniform('min_samples_split', 2, 20, 1)),
-            'min_samples_leaf': scope.int(hp.quniform('min_samples_leaf', 1, 20, 1)),
+            "n_estimators": scope.int(hp.quniform("n_estimators", 10, 100, 1)),
+            "max_depth": scope.int(hp.quniform("max_depth", 1, 50, 1)),
+            "min_samples_split": scope.int(hp.quniform("min_samples_split", 2, 20, 1)),
+            "min_samples_leaf": scope.int(hp.quniform("min_samples_leaf", 1, 20, 1)),
         }
-        
+
     elif model_name == "XGBoost":
         space = {
-            'n_estimators': scope.int(hp.quniform('n_estimators', 10, 100, 1)),
-            'max_depth': scope.int(hp.quniform('max_depth', 1, 100, 1)),
-            'learning_rate': hp.loguniform('learning_rate', -7, 0),
-            'subsample': hp.uniform('subsample', 0.5, 1),
-            'colsample_bytree': hp.uniform('colsample_bytree', 0.5, 1),
-            'min_child_weight': hp.loguniform('min_child_weight', -2, 3),
-            'gamma': hp.loguniform('gamma', -10, 10),
-            'reg_alpha': hp.loguniform('alpha', -10, 10),
-            'reg_lambda': hp.loguniform('lambda', -10, 10),
+            "n_estimators": scope.int(hp.quniform("n_estimators", 10, 100, 1)),
+            "max_depth": scope.int(hp.quniform("max_depth", 1, 100, 1)),
+            "learning_rate": hp.loguniform("learning_rate", -7, 0),
+            "subsample": hp.uniform("subsample", 0.5, 1),
+            "colsample_bytree": hp.uniform("colsample_bytree", 0.5, 1),
+            "min_child_weight": hp.loguniform("min_child_weight", -2, 3),
+            "gamma": hp.loguniform("gamma", -10, 10),
+            "reg_alpha": hp.loguniform("alpha", -10, 10),
+            "reg_lambda": hp.loguniform("lambda", -10, 10),
         }
-        
+
     elif model_name == "MLP":
         space = {
-            'hidden_layer_sizes': hp.choice('hidden_layer_sizes', [
-                (64,), (128,), (256,), (512,), (1024,),  # Single layer options
-                (64, 64), (128, 128), (256, 256),  # Two layers options
-                (64, 64, 64), (128, 128, 128),  # Three layers options
-                (64, 64, 64, 64), (128, 128, 128, 128)  # Four layers options
-            ]),
-            'activation': hp.choice('activation', ['relu', 'sigmoid', 'tanh', 'linear']),
-            'batch_size': hp.choice('batch_size', [28, 64, 128]),
-            'optimizer': hp.choice('optimizer', ['Adadelta', 'Adam', 'Adamax']),
-            'epochs': scope.int(hp.quniform('epochs', 50, 1500, 10)),
-            'dropout': hp.choice('dropout', [0.05, 0.75])
+            "hidden_layer_sizes": hp.choice(
+                "hidden_layer_sizes",
+                [
+                    (64,),
+                    (128,),
+                    (256,),
+                    (512,),
+                    (1024,),  # Single layer options
+                    (64, 64),
+                    (128, 128),
+                    (256, 256),  # Two layers options
+                    (64, 64, 64),
+                    (128, 128, 128),  # Three layers options
+                    (64, 64, 64, 64),
+                    (128, 128, 128, 128),  # Four layers options
+                ],
+            ),
+            "activation": hp.choice(
+                "activation", ["relu", "sigmoid", "tanh", "linear"]
+            ),
+            "batch_size": hp.choice("batch_size", [28, 64, 128]),
+            "optimizer": hp.choice("optimizer", ["Adadelta", "Adam", "Adamax"]),
+            "epochs": scope.int(hp.quniform("epochs", 50, 1500, 10)),
+            "dropout": hp.choice("dropout", [0.05, 0.75]),
         }
-        
+
     elif model_name == "KNN":
         space = {
-            'n_neighbors': scope.int(hp.quniform('n_neighbors', 1, 50, 1)),
-            'weights': hp.choice('weights', ['uniform', 'distance']),
-            'p': scope.int(hp.quniform('p', 1, 2, 1)),
+            "n_neighbors": scope.int(hp.quniform("n_neighbors", 1, 50, 1)),
+            "weights": hp.choice("weights", ["uniform", "distance"]),
+            "p": scope.int(hp.quniform("p", 1, 2, 1)),
         }
-        
+
     elif model_name == "DecisionTree":
         space = {
-            'max_depth': scope.int(hp.quniform('max_depth', 1, 50, 1)),
-            'min_samples_split': scope.int(hp.quniform('min_samples_split', 2, 20, 1)),
-            'min_samples_leaf': scope.int(hp.quniform('min_samples_leaf', 1, 20, 1)),
+            "max_depth": scope.int(hp.quniform("max_depth", 1, 50, 1)),
+            "min_samples_split": scope.int(hp.quniform("min_samples_split", 2, 20, 1)),
+            "min_samples_leaf": scope.int(hp.quniform("min_samples_leaf", 1, 20, 1)),
         }
-        
+
     return space

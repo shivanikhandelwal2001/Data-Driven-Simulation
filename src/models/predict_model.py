@@ -2,6 +2,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import numpy as np
 import pandas as pd
 import json
+import os
 
 SAVE_RESULTS = "reports/predictions/"
 
@@ -32,13 +33,13 @@ def calculate_metrics(model_name, y_test, y_pred):
     :return: Dictionary containing calculated metrics.
     """
     return {
-        "Model Name": model_name,
+        model_name: {
         "MAE": mean_absolute_error(y_test, y_pred),
         "MSE": mean_squared_error(y_test, y_pred),
         "RMSE": np.sqrt(mean_squared_error(y_test, y_pred)),
         "R2 Score": r2_score(y_test, y_pred),
     }
-
+    }
 
 def get_feature_importance(model, feature_columns, target_columns):
     """
@@ -86,3 +87,28 @@ def save_metrics(building_id, model_name, metrics):
     file_name = f"{SAVE_RESULTS}{building_id}_{model_name}_metrics.json"
     with open(file_name, "w") as json_file:
         json.dump(metrics, json_file, indent=4)
+
+
+def save_models_results(building_id, metrics):
+    """
+    Save models results in a CSV file for a specific building.
+    """
+    results = f"{SAVE_RESULTS}{building_id}_ML_Models_Results.csv"
+    
+    if os.path.exists(results):
+        df = pd.read_csv(results, index_col=0)
+    else:
+        df = pd.DataFrame()
+
+    for model_name, value in metrics.items():
+        if model_name in df.index:
+            df.loc[model_name] = value
+        else:
+            # df = df.append(pd.Series(metrics, name=model_name))
+            print(model_name, value)
+            df1 = pd.DataFrame(value, index=[model_name])
+            print(df)
+            print(df1)
+            df = pd.concat([df, df1])
+
+    df.to_csv(results)
