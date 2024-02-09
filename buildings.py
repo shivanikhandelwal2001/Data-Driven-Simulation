@@ -141,6 +141,9 @@ def train_and_evaluate_with_hyperopt(building_id, model_name):
     trained_model = MODELS[model_name](**best_params)
     trained_model.fit(X_train, y_train)
 
+    predict_model.save_best_params(building_id, model_name+"_hyperopt", best_params)
+    predict_model.save_models(building_id, model_name+"_hyperopt", trained_model)
+
     predictions = predict_model.make_prediction(trained_model, X_test, y_test)
     metrics = predict_model.calculate_metrics(model_name, y_test, predictions)
 
@@ -148,7 +151,6 @@ def train_and_evaluate_with_hyperopt(building_id, model_name):
         feat_df = predict_model.get_feature_importance(trained_model, feature_columns, target_columns)
     
     predict_model.save_predictions(building_id, model_name+"_hyperopt", predictions)
-    predict_model.save_metrics(building_id, model_name+"_hyperopt", metrics)
     predict_model.save_models_results(building_id+"_hyperopt", metrics)
 
     for target, metric in metrics[model_name].items():

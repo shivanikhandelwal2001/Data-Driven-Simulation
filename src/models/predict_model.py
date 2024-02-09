@@ -3,8 +3,10 @@ import numpy as np
 import pandas as pd
 import json
 import os
+from joblib import dump
 
 SAVE_RESULTS = "reports/predictions/"
+SAVE_MODELS = "models/"
 
 
 def make_prediction(model, X_test, y_test):
@@ -91,7 +93,7 @@ def save_metrics(building_id, model_name, metrics):
 
 def save_models_results(building_id, metrics):
     """
-    Save models results in a CSV file for a specific building.
+    Save model's results in a CSV file for a specific building.
     """
     results = f"{SAVE_RESULTS}{building_id}_ML_Models_Results.csv"
     
@@ -112,3 +114,20 @@ def save_models_results(building_id, metrics):
             df = pd.concat([df, df1])
 
     df.to_csv(results)
+
+
+def save_best_params(building_id, model_name, params):
+    """
+    Save the model's best params to a json file.
+    """
+    file_name = f"{SAVE_MODELS}{building_id}_{model_name}_params.json"
+    with open(file_name, "w") as json_file:
+        json.dump(params, json_file, indent=4)
+
+
+def save_models(building_id, model_name, model):
+    """
+    Save the trained model to a file
+    """
+    file_name = f"{SAVE_MODELS}{building_id}_{model_name}.joblib"
+    dump(model, file_name)

@@ -142,8 +142,7 @@ def define_hyperparameters_space(model_name):
             "max_depth": scope.int(hp.quniform("max_depth", 1, 50, 1)),
             "min_samples_split": scope.int(hp.quniform("min_samples_split", 2, 20, 1)),
             "min_samples_leaf": scope.int(hp.quniform("min_samples_leaf", 1, 20, 1)),
-        }
-            "max_depth": scope.int(hp.quniform("max_depth", 1, 
+        } 
 
     elif model_name == "RidgeCV":
         space = {
