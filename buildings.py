@@ -19,7 +19,6 @@ MODELS = {
     "RandomForest": RandomForestRegressor,
     "ExtraTrees": ExtraTreesRegressor,
     "XGBoost": XGBRegressor,
-    "MLP": MLPRegressor,
     "KNN": KNeighborsRegressor,
     "DecisionTree": DecisionTreeRegressor,
 }
@@ -85,14 +84,14 @@ def train_and_evaluate(building_id, model_name):
     X_test, y_test = train_model.get_input_output_features(test, target_columns)
 
     if model_name in ["LinearRegression", "RidgeCV", "MultiTaskLassoCV"]:
-        X_train, X_test = train_model.scale_features(X_train, X_test)
+        X_train, X_test = train_model.standard_scale_features(X_train, X_test)
 
     trained_model = train_model.train_model(model_name, X_train, y_train)    
     predictions = predict_model.make_prediction(trained_model, X_test, y_test)
 
     metrics = predict_model.calculate_metrics(model_name, y_test, predictions)
     predict_model.save_predictions(building_id, model_name, predictions)
-    predict_model.save_metrics(building_id, model_name, metrics)
+    predict_model.save_models_results(building_id, metrics)
 
     if model_name not in ["KNN", "MLP"]:
         feat_df = predict_model.get_feature_importance(trained_model, feature_columns, target_columns)
@@ -121,25 +120,34 @@ def train_and_evaluate_with_hyperopt(building_id, model_name):
     best_params = {}
     
     print("*"*20, model_name)
+
+    if model_name == "MLP":
+        X_train, X_test = train_model.min_max_scale_features(X_train, X_test)
+        y_train, y_test = train_model.min_max_scale_features(y_train, y_test)
+    elif model_name in ["LinearRegression", "RidgeCV", "MultiTaskLassoCV"]:
+        X_train, X_test = train_model.standard_scale_features(X_train, X_test)
     
     if model_name not in ["LinearRegression", "RidgeCV", "MultiTaskLassoCV"]:
         trials = Trials()
-        best = fmin(fn=lambda params: train_model.objective_function(params, model_name, X_train.values, y_train.values),
+        best = fmin(fn=lambda params: train_model.objective_function(params, model_name, X_train, y_train),
                     space=space,
                     algo=tpe.suggest,
                     max_evals=100,
                     trials=trials)
         
         best_params = {key: int(value) if isinstance(value, float) and value.is_integer() else value for key, value in best.items()}
+        if "weights" in best_params:
+            best_params['weights'] = "uniform" if best_params['weights'] == 0 else "distance"
         # if (model_name == "RidgeCV") or (model_name == "MultiTaskLassoCV"):
         #     best_params["alphas"] = [best_params.pop("alpha")]
         
-    else:
-        X_train, X_test = train_model.scale_features(X_train, X_test)
-        
     print(f"Best params {best_params}")
-    trained_model = MODELS[model_name](**best_params)
-    trained_model.fit(X_train, y_train)
+    if model_name == "MLP":
+        model = mlp_model(**params)
+        trained_model = model.fit(X_train, y_train, batch_size=params['batch_size'], epochs=params['epochs'], verbose=0)
+    else:
+        trained_model = MODELS[model_name](**best_params)
+        trained_model.fit(X_train, y_train)
 
     predict_model.save_best_params(building_id, model_name+"_hyperopt", best_params)
     predict_model.save_models(building_id, model_name+"_hyperopt", trained_model)
@@ -165,9 +173,9 @@ def process_all_buildings(building_ids, features):
         sub_data = visualize_building_data(building_id, features)
         preprocess_and_feature_engineer(building_id, sub_data)
         
-        for model_name in MODELS.keys():
-            # train_and_evaluate(building_id, model_name)
-            train_and_evaluate_with_hyperopt(building_id, model_name)
+        for model_name in list(MODELS.keys()):
+            train_and_evaluate(building_id, model_name)
+            # train_and_evaluate_with_hyperopt(building_id, model_name)
 
 
 # List of building IDs to process
@@ -206,4 +214,4 @@ features = [
 ]
 
 # Process all buildings
-process_all_buildings(building_ids, features)
+process_all_buildings(building_ids[1:], features)

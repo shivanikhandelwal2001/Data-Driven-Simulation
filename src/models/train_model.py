@@ -5,6 +5,11 @@ from sklearn.model_selection import TimeSeriesSplit
 from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
 from xgboost import XGBRegressor
 from sklearn.neural_network import MLPRegressor
+from sklearn.preprocessing import MinMaxScaler
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout
+from tensorflow.keras.optimizers import Adam
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.tree import DecisionTreeRegressor
 from src.models import predict_model
@@ -12,6 +17,7 @@ from sklearn.metrics import mean_squared_error
 import numpy as np
 from hyperopt import hp, fmin, tpe, Trials, STATUS_OK
 from hyperopt.pyll.base import scope
+# tf.config.set_visible_devices([], 'GPU')
 
 PROCESSED_DATA_PATH = "data/processed/"
 
@@ -83,7 +89,7 @@ def train_model(model_name, X_train, y_train):
     return ml_model
 
 
-def scale_features(X_train, X_test):
+def standard_scale_features(X_train, X_test):
     """
     Scale features using standard scaler.
 
@@ -97,7 +103,45 @@ def scale_features(X_train, X_test):
     return X_train_scaled, X_test_scaled
 
 
-def time_series_cross_validation(model, X, y, n_splits=5):
+def min_max_scale_features(X_train, X_test):
+    """
+    Scale features using MinMax scaler.
+
+    :param X_train: Training input features.
+    :param X_test: Testing input features.
+    :return: Scaled training and testing features.
+    """
+    scaler = MinMaxScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+    return X_train_scaled, X_test_scaled
+
+
+def min_max_scale_target(y_train, y_test):
+    """
+    Scale Target variables using MinMax scaler.
+
+    :param y_train: Training input target variables.
+    :param y_test: Testing input target variables.
+    :return: Scaled training and testing features.
+    """
+    scaler = MinMaxScaler()
+    y_train_scaled = scaler.fit_transform(y_train.reshape(-1, 1)).ravel()
+    y_test_scaled = scaler.transform(y_test.reshape(-1, 1)).ravel()
+    return y_train_scaled, y_test_scaled
+
+
+def mlp_model(hidden_layer_sizes, activation, batch_size, optimizer, epochs, dropout_rate, num_outputs):
+    model = Sequential()
+    for layer_size in hidden_layer_sizes:
+        model.add(Dense(layer_size, activation=activation))
+        model.add(Dropout(dropout_rate))
+    model.add(Dense(num_outputs)) 
+    model.compile(optimizer=optimizer, loss='mean_squared_error')
+    return model
+    
+
+def time_series_cross_validation(model_name, X, y, params, n_splits=5):
     """
     Perform time series cross-validation on a given model.
 
@@ -115,7 +159,15 @@ def time_series_cross_validation(model, X, y, n_splits=5):
         X_train, X_test = X[train_index], X[test_index]
         y_train, y_test = y[train_index], y[test_index]
 
-        trained_model = model.fit(X_train, y_train)
+        if model_name == "MLP":
+            trained_model = mlp_model(**params, num_outputs=y_test.shape[1])
+            trained_model.fit(X_train, y_train, batch_size=params['batch_size'], epochs=params['epochs'], verbose=0)
+        elif model_name in ["RandomForest", "ExtraTrees", "KNN"]:
+            model = MODELS[model_name](**params, n_jobs=-1)
+            trained_model = model.fit(X_train, y_train)
+        else:
+            model = MODELS[model_name](**params)
+            trained_model = model.fit(X_train, y_train)
         y_pred = trained_model.predict(X_test)
         mse_scores.append(mean_squared_error(y_test, y_pred))
 
@@ -126,8 +178,9 @@ def objective_function(params, model_name, X_train, y_train):
     """
     Objective function for Hyperopt to minimize. Returns the cross-validated score of the given model and parameters.
     """
-    model = MODELS[model_name](**params)
-    score = time_series_cross_validation(model, X_train, y_train)
+    if model_name != "MLP":
+        X_train, y_train = X_train.values, y_train.values
+    score = time_series_cross_validation(model_name, X_train, y_train, params)
     return {"loss": score, "status": STATUS_OK}
 
 
@@ -202,7 +255,7 @@ def define_hyperparameters_space(model_name):
             "batch_size": hp.choice("batch_size", [28, 64, 128]),
             "optimizer": hp.choice("optimizer", ["Adadelta", "Adam", "Adamax"]),
             "epochs": scope.int(hp.quniform("epochs", 50, 1500, 10)),
-            "dropout": hp.choice("dropout", [0.05, 0.75]),
+            "dropout_rate": hp.choice("dropout", [0.05, 0.75]),
         }
 
     elif model_name == "KNN":
