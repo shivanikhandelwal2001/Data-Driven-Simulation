@@ -6,10 +6,10 @@ from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
 from xgboost import XGBRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import MinMaxScaler
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout
-from tensorflow.keras.optimizers import Adam
+# import tensorflow as tf
+# from tensorflow.keras.models import Sequential
+# from tensorflow.keras.layers import Dense, Dropout
+# from tensorflow.keras.optimizers import Adam
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.tree import DecisionTreeRegressor
 from src.models import predict_model
@@ -162,11 +162,10 @@ def time_series_cross_validation(model_name, X, y, params, n_splits=5):
         if model_name == "MLP":
             trained_model = mlp_model(**params, num_outputs=y_test.shape[1])
             trained_model.fit(X_train, y_train, batch_size=params['batch_size'], epochs=params['epochs'], verbose=0)
-        elif model_name in ["RandomForest", "ExtraTrees", "KNN"]:
-            model = MODELS[model_name](**params, n_jobs=-1)
-            trained_model = model.fit(X_train, y_train)
         else:
             model = MODELS[model_name](**params)
+            if hasattr(model, 'n_jobs'):
+                model.n_jobs = -1
             trained_model = model.fit(X_train, y_train)
         y_pred = trained_model.predict(X_test)
         mse_scores.append(mean_squared_error(y_test, y_pred))

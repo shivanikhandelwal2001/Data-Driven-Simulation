@@ -10,7 +10,7 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.tree import DecisionTreeRegressor
 from hyperopt import hp, fmin, tpe, Trials
-
+from joblib import Parallel, delayed
 
 MODELS = {
     "LinearRegression": LinearRegression,
@@ -143,14 +143,14 @@ def train_and_evaluate_with_hyperopt(building_id, model_name):
         
     print(f"Best params {best_params}")
     if model_name == "MLP":
-        model = mlp_model(**params)
-        trained_model = model.fit(X_train, y_train, batch_size=params['batch_size'], epochs=params['epochs'], verbose=0)
+        model = train_model.mlp_model(**best_params)
+        trained_model = model.fit(X_train, y_train, batch_size=best_params['batch_size'], epochs=best_params['epochs'], verbose=0)
     else:
         trained_model = MODELS[model_name](**best_params)
         trained_model.fit(X_train, y_train)
 
-    predict_model.save_best_params(building_id, model_name+"_hyperopt", best_params)
-    predict_model.save_models(building_id, model_name+"_hyperopt", trained_model)
+    predict_model.save_best_params(building_id, "hyperopt_params/"+model_name, best_params)
+    predict_model.save_models(building_id, "hyperopt_models/"+model_name, trained_model)
 
     predictions = predict_model.make_prediction(trained_model, X_test, y_test)
     metrics = predict_model.calculate_metrics(model_name, y_test, predictions)
@@ -158,24 +158,25 @@ def train_and_evaluate_with_hyperopt(building_id, model_name):
     if model_name not in ["KNN", "MLP"]:
         feat_df = predict_model.get_feature_importance(trained_model, feature_columns, target_columns)
     
-    predict_model.save_predictions(building_id, model_name+"_hyperopt", predictions)
-    predict_model.save_models_results(building_id+"_hyperopt", metrics)
+    predict_model.save_predictions(building_id, "hyperopt_pred/"+model_name, predictions)
+    predict_model.save_models_results("hyperopt_model_results/"+building_id, metrics)
 
     for target, metric in metrics[model_name].items():
         print(f"Metrics for {target} in {model_name}:\n", metric, "\n")
 
 
-def process_all_buildings(building_ids, features):
+def process_all_buildings(building_id, features):
     """Process all buildings."""
-    for building_id in building_ids:
-        print("#" * 20, building_id)
-        process_building_data(building_id)
-        sub_data = visualize_building_data(building_id, features)
-        preprocess_and_feature_engineer(building_id, sub_data)
+    print("#"*20, building_id)
+    # process_building_data(building_id)
+    # sub_data = visualize_building_data(building_id, features)
+    # preprocess_and_feature_engineer(building_id, sub_data)
+    
+    # for model_name in list(MODELS.keys()):
+        # train_and_evaluate(building_id, model_name)
+        # train_and_evaluate_with_hyperopt(building_id, model_name)
         
-        for model_name in list(MODELS.keys()):
-            train_and_evaluate(building_id, model_name)
-            # train_and_evaluate_with_hyperopt(building_id, model_name)
+    Parallel(n_jobs=-1)(delayed(train_and_evaluate_with_hyperopt)(building_id, model_name) for model_name in MODELS.keys())
 
 
 # List of building IDs to process
@@ -214,4 +215,5 @@ features = [
 ]
 
 # Process all buildings
-process_all_buildings(building_ids[1:], features)
+# process_all_buildings(building_ids, features)
+Parallel(n_jobs=-1)(delayed(process_all_buildings)(building_id, features) for building_id in building_ids[:3])

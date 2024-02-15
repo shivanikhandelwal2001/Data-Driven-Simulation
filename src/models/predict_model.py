@@ -106,11 +106,7 @@ def save_models_results(building_id, metrics):
         if model_name in df.index:
             df.loc[model_name] = value
         else:
-            # df = df.append(pd.Series(metrics, name=model_name))
-            print(model_name, value)
             df1 = pd.DataFrame(value, index=[model_name])
-            print(df)
-            print(df1)
             df = pd.concat([df, df1])
 
     df.to_csv(results)
