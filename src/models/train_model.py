@@ -34,18 +34,6 @@ MODELS = {
     "DecisionTree": DecisionTreeRegressor,
 }
 
-train_models = {
-    "LinearRegression": "train_linear_regression",
-    "RidgeCV": "train_ridge_cv",
-    "MultiTaskLassoCV": "train_lasso_cv",
-    "RandomForest": "train_random_forest",
-    "ExtraTrees": "train_extra_trees",
-    "XGBoost": "train_xgboost",
-    "MLP": "train_mlp",
-    "KNN": "train_knn",
-    "DecisionTree": "train_decision_tree",
-}
-
 
 def load_processed_data(building_id: str) -> pd.DataFrame:
     """
@@ -263,11 +251,11 @@ def time_series_cross_validation(model_name, X, y, params, n_splits=5):
 
     for train_index, test_index in tscv.split(X):
 
-        X_train, X_test = X[train_index], X[test_index]
-        y_train, y_test = y[train_index], y[test_index]
+        X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
 
         trained_model, metrics = train_models[model_name](X_train, y_train, X_test, y_test, params)
-        mse_scores.append(metrics["MSE"])
+        mse_scores.append(metrics[model_name]["MSE"])
 
     return np.mean(mse_scores)
 
@@ -369,3 +357,16 @@ def define_hyperparameters_space(model_name):
         }
 
     return space
+
+
+train_models = {
+    "LinearRegression": train_linear_regression,
+    "RidgeCV": train_ridge_cv,
+    "MultiTaskLassoCV": train_lasso_cv,
+    "RandomForest": train_random_forest,
+    "ExtraTrees": train_extra_trees,
+    "XGBoost": train_xgboost,
+    "MLP": train_mlp,
+    "KNN": train_knn,
+    "DecisionTree": train_decision_tree,
+}

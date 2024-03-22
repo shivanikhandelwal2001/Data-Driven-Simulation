@@ -66,6 +66,24 @@ def get_feature_importance(model, feature_columns, target_columns):
     return feat_df
 
 
+def convert_numpy(obj):
+    """
+    Recursively convert numpy data types in the object to Python native types.
+    """
+    if isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, dict):
+        return {key: convert_numpy(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_numpy(value) for value in obj]
+    else:
+        return obj
+
+
 def save_predictions(building_id, model_name, predictions):
     """
     Save the model predictions to a CSV file.
@@ -99,14 +117,15 @@ def save_best_params(building_id, model_name, params):
     """
     Save the model's best params to a json file.
     """
+    converted_params = convert_numpy(params)
     file_name = f"{SAVE_MODELS}models_best_params/{building_id}_best_params.json"
     if os.path.exists(file_name):
         with open(file_name, "r") as json_file:
             existing_data = json.load(json_file)
     else:
         existing_data = {}
-    
-    existing_data[model_name] = params
+        
+    existing_data[model_name] = converted_params
 
     with open(file_name, "w") as json_file:
         json.dump(existing_data, json_file, indent=4)

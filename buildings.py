@@ -141,7 +141,7 @@ def process_all_buildings(building_id, features, process=False):
         sub_data = visualize_building_data(building_id, features)
         preprocess_and_feature_engineer(building_id, sub_data)
         
-    # Parallel(n_jobs=-1)(delayed(train_and_evaluate_with_hyperopt)(building_id, model, tuning=True) for model in model_names[:2])
+    Parallel(n_jobs=-1)(delayed(train_and_evaluate_with_hyperopt)(building_id, model, tuning=True) for model in model_names)
 
 
 # List of building IDs to process
@@ -180,4 +180,4 @@ features = [
 ]
 
 # Process all buildings
-Parallel(n_jobs=-1)(delayed(process_all_buildings)(building_id, features, process=True) for building_id in building_ids)
+Parallel(n_jobs=-1)(delayed(process_all_buildings)(building_id, features, process=False) for building_id in building_ids[:1])
