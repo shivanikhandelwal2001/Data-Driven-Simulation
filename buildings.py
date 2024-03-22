@@ -11,17 +11,22 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.tree import DecisionTreeRegressor
 from hyperopt import hp, fmin, tpe, Trials
 from joblib import Parallel, delayed
+import json
 
-MODELS = {
-    "LinearRegression": LinearRegression,
-    "RidgeCV": RidgeCV,
-    "MultiTaskLassoCV": MultiTaskLassoCV,
-    "RandomForest": RandomForestRegressor,
-    "ExtraTrees": ExtraTreesRegressor,
-    "XGBoost": XGBRegressor,
-    "KNN": KNeighborsRegressor,
-    "DecisionTree": DecisionTreeRegressor,
-}
+
+model_names = [
+    "LinearRegression",
+    "RidgeCV",
+    "MultiTaskLassoCV",
+    "RandomForest",
+    "ExtraTrees",
+    "XGBoost",
+    "MLP",
+    "KNN",
+    "DecisionTree"
+]
+
+SAVE_MODELS = "models/"
 
 def process_building_data(building_id):
     """Process data for a single building."""
@@ -67,43 +72,35 @@ def preprocess_and_feature_engineer(building_id, sub_data):
     build_features.save_processed_data(data_imputed, building_id)
 
 
-def train_and_evaluate(building_id, model_name):
-    """Train and evaluate model for a single building."""
-    data = train_model.load_processed_data(building_id)
-    train, test = train_model.split_data(data)
-
-    target_columns = [
-        col
-        for col in data.columns
-        if any(col.endswith(word) for word in ["Air_temperature", "Relative_humidity"])
-    ]
+def hyperparameter_tuning(building_id, model_name, X_train, y_train):
+    """
+    Perform hyperparameter tuning and save the best parameters for a model.
+    """
+    space = train_model.define_hyperparameters_space(model_name)
     
-    feature_columns = [col for col in data.columns if col not in target_columns]
-    
-    X_train, y_train = train_model.get_input_output_features(train, target_columns)
-    X_test, y_test = train_model.get_input_output_features(test, target_columns)
+    if not space:
+        print(f"No hyperparameters to tune for {model_name}. Using default parameters.")
+        best_params = {}
+    else:
+        trials = Trials()
+        best = fmin(fn=lambda params: train_model.objective_function(params, model_name, X_train, y_train),
+                    space=space,
+                    algo=tpe.suggest,
+                    max_evals=100,
+                    trials=trials)
+                    
+        best_params = {key: int(value) if isinstance(value, float) and value.is_integer() else value for key, value in best.items()}
+        if "weights" in best_params:
+            best_params['weights'] = "uniform" if best_params['weights'] == 0 else "distance"
 
-    if model_name in ["LinearRegression", "RidgeCV", "MultiTaskLassoCV"]:
-        X_train, X_test = train_model.standard_scale_features(X_train, X_test)
-
-    trained_model = train_model.train_model(model_name, X_train, y_train)    
-    predictions = predict_model.make_prediction(trained_model, X_test, y_test)
-
-    metrics = predict_model.calculate_metrics(model_name, y_test, predictions)
-    predict_model.save_predictions(building_id, model_name, predictions)
-    predict_model.save_models_results(building_id, metrics)
-
-    if model_name not in ["KNN", "MLP"]:
-        feat_df = predict_model.get_feature_importance(trained_model, feature_columns, target_columns)
-
-    for target, metric in metrics[model_name].items():
-        print(f"Metrics for {target} in {model_name}:\n", metric, "\n")
-
-    # for col in y_test.columns:
-    #     visualize.plot_predictions(model_name, y_test, predictions, col)
+    predict_model.save_best_params(building_id, model_name, best_params)
+    print(f"Best parameters for {model_name} saved.")
 
 
-def train_and_evaluate_with_hyperopt(building_id, model_name):
+def train_and_evaluate_with_hyperopt(building_id, model_name, tuning=False):
+    """
+    Train a model using the best parameters stored in a JSON file.
+    """
     data = train_model.load_processed_data(building_id)
     train, test = train_model.split_data(data)
 
@@ -115,55 +112,26 @@ def train_and_evaluate_with_hyperopt(building_id, model_name):
 
     X_train, y_train = train_model.get_input_output_features(train, target_columns)
     X_test, y_test = train_model.get_input_output_features(test, target_columns)
-
-    space = train_model.define_hyperparameters_space(model_name)
-    best_params = {}
     
-    print("*"*20, model_name)
+    if tuning:
+        hyperparameter_tuning(building_id, model_name, X_train, y_train)
 
-    if model_name == "MLP":
-        X_train, X_test = train_model.min_max_scale_features(X_train, X_test)
-        y_train, y_test = train_model.min_max_scale_features(y_train, y_test)
-    elif model_name in ["LinearRegression", "RidgeCV", "MultiTaskLassoCV"]:
-        X_train, X_test = train_model.standard_scale_features(X_train, X_test)
+    params = f"{SAVE_MODELS}models_best_params/{building_id}_best_params.json"
+    with open(params, "r") as json_file:
+        best_params = json.load(json_file).get(model_name, {})
     
-    if model_name not in ["LinearRegression", "RidgeCV", "MultiTaskLassoCV"]:
-        trials = Trials()
-        best = fmin(fn=lambda params: train_model.objective_function(params, model_name, X_train, y_train),
-                    space=space,
-                    algo=tpe.suggest,
-                    max_evals=100,
-                    trials=trials)
-        
-        best_params = {key: int(value) if isinstance(value, float) and value.is_integer() else value for key, value in best.items()}
-        if "weights" in best_params:
-            best_params['weights'] = "uniform" if best_params['weights'] == 0 else "distance"
-        # if (model_name == "RidgeCV") or (model_name == "MultiTaskLassoCV"):
-        #     best_params["alphas"] = [best_params.pop("alpha")]
-        
-    print(f"Best params {best_params}")
-    if model_name == "MLP":
-        model = train_model.mlp_model(**best_params)
-        trained_model = model.fit(X_train, y_train, batch_size=best_params['batch_size'], epochs=best_params['epochs'], verbose=0)
-    else:
-        trained_model = MODELS[model_name](**best_params)
-        trained_model.fit(X_train, y_train)
+    if not best_params:
+        print(f"No best parameters found for {model_name}.")
 
-    predict_model.save_best_params(building_id, "hyperopt_params/"+model_name, best_params)
-    predict_model.save_models(building_id, "hyperopt_models/"+model_name, trained_model)
-
-    predictions = predict_model.make_prediction(trained_model, X_test, y_test)
-    metrics = predict_model.calculate_metrics(model_name, y_test, predictions)
-
-    if model_name not in ["KNN", "MLP"]:
-        feat_df = predict_model.get_feature_importance(trained_model, feature_columns, target_columns)
+    trained_model, metrics = train_model.train_models[model_name](X_train, y_train, X_test, y_test, best_params)
+    predict_model.save_models(building_id, model_name, trained_model)
+    predict_model.save_models_results(building_id, metrics)
     
-    predict_model.save_predictions(building_id, "hyperopt_pred/"+model_name, predictions)
-    predict_model.save_models_results("hyperopt_model_results/"+building_id, metrics)
-
     for target, metric in metrics[model_name].items():
         print(f"Metrics for {target} in {model_name}:\n", metric, "\n")
-
+        
+    if model_name not in ["KNN", "MLP"]:
+        feat_df = predict_model.get_feature_importance(trained_model, feature_columns, target_columns)
 
 def process_all_buildings(building_id, features):
     """Process all buildings."""
@@ -171,12 +139,8 @@ def process_all_buildings(building_id, features):
     # process_building_data(building_id)
     # sub_data = visualize_building_data(building_id, features)
     # preprocess_and_feature_engineer(building_id, sub_data)
-    
-    # for model_name in list(MODELS.keys()):
-        # train_and_evaluate(building_id, model_name)
-        # train_and_evaluate_with_hyperopt(building_id, model_name)
         
-    Parallel(n_jobs=-1)(delayed(train_and_evaluate_with_hyperopt)(building_id, model_name) for model_name in MODELS.keys())
+    Parallel(n_jobs=2)(delayed(train_and_evaluate_with_hyperopt)(building_id, model, tuning=True) for model in model_names[:2])
 
 
 # List of building IDs to process
@@ -215,5 +179,4 @@ features = [
 ]
 
 # Process all buildings
-# process_all_buildings(building_ids, features)
-Parallel(n_jobs=-1)(delayed(process_all_buildings)(building_id, features) for building_id in building_ids[:3])
+Parallel(n_jobs=2)(delayed(process_all_buildings)(building_id, features) for building_id in building_ids[:1])

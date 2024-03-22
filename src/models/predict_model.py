@@ -69,26 +69,9 @@ def get_feature_importance(model, feature_columns, target_columns):
 def save_predictions(building_id, model_name, predictions):
     """
     Save the model predictions to a CSV file.
-
-    :param predictions: DataFrame containing model predictions.
-    :param building_id: Identifier for the building.
-    :param file_path: Path to save the predictions file.
     """
     file_name = f"{SAVE_RESULTS}{building_id}_{model_name}_predictions.csv"
     predictions.to_csv(file_name)
-
-
-def save_metrics(building_id, model_name, metrics):
-    """
-    Save the model results to a json file.
-
-    :param predictions: DataFrame containing model predictions.
-    :param building_id: Identifier for the building.
-    :param file_path: Path to save the metrics dict.
-    """
-    file_name = f"{SAVE_RESULTS}{building_id}_{model_name}_metrics.json"
-    with open(file_name, "w") as json_file:
-        json.dump(metrics, json_file, indent=4)
 
 
 def save_models_results(building_id, metrics):
@@ -116,14 +99,22 @@ def save_best_params(building_id, model_name, params):
     """
     Save the model's best params to a json file.
     """
-    file_name = f"{SAVE_MODELS}{building_id}_{model_name}_params.json"
+    file_name = f"{SAVE_MODELS}models_best_params/{building_id}_best_params.json"
+    if os.path.exists(file_name):
+        with open(file_name, "r") as json_file:
+            existing_data = json.load(json_file)
+    else:
+        existing_data = {}
+    
+    existing_data[model_name] = params
+
     with open(file_name, "w") as json_file:
-        json.dump(params, json_file, indent=4)
+        json.dump(existing_data, json_file, indent=4)
 
 
 def save_models(building_id, model_name, model):
     """
     Save the trained model to a file
     """
-    file_name = f"{SAVE_MODELS}{building_id}_{model_name}.joblib"
+    file_name = f"{SAVE_MODELS}final_models/{building_id}_{model_name}.joblib"
     dump(model, file_name)

@@ -6,10 +6,10 @@ from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
 from xgboost import XGBRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import MinMaxScaler
-# import tensorflow as tf
-# from tensorflow.keras.models import Sequential
-# from tensorflow.keras.layers import Dense, Dropout
-# from tensorflow.keras.optimizers import Adam
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout
+from tensorflow.keras.optimizers import Adam
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.tree import DecisionTreeRegressor
 from src.models import predict_model
@@ -34,6 +34,18 @@ MODELS = {
     "DecisionTree": DecisionTreeRegressor,
 }
 
+train_models = {
+    "LinearRegression": "train_linear_regression",
+    "RidgeCV": "train_ridge_cv",
+    "MultiTaskLassoCV": "train_lasso_cv",
+    "RandomForest": "train_random_forest",
+    "ExtraTrees": "train_extra_trees",
+    "XGBoost": "train_xgboost",
+    "MLP": "train_mlp",
+    "KNN": "train_knn",
+    "DecisionTree": "train_decision_tree",
+}
+
 
 def load_processed_data(building_id: str) -> pd.DataFrame:
     """
@@ -46,9 +58,7 @@ def load_processed_data(building_id: str) -> pd.DataFrame:
     return data
 
 
-def split_data(
-    data: pd.DataFrame, test_months: int = 2
-) -> (pd.DataFrame, pd.DataFrame):
+def split_data(data: pd.DataFrame, test_months: int = 2):
     """
     Split data into training and testing sets based on the specified number of test months.
 
@@ -73,20 +83,6 @@ def get_input_output_features(data, target_columns):
     """
     X, y = data.drop(columns=target_columns), data[target_columns]
     return X, y
-
-
-def train_model(model_name, X_train, y_train):
-    """
-    Train a specified machine learning model.
-
-    :param model_name: Name of the model to train.
-    :param X_train: Training input features.
-    :param y_train: Training output features.
-    :return: Trained model.
-    """
-    ml_model = MODELS[model_name]()
-    ml_model.fit(X_train, y_train)
-    return ml_model
 
 
 def standard_scale_features(X_train, X_test):
@@ -139,6 +135,117 @@ def mlp_model(hidden_layer_sizes, activation, batch_size, optimizer, epochs, dro
     model.add(Dense(num_outputs)) 
     model.compile(optimizer=optimizer, loss='mean_squared_error')
     return model
+
+
+def train_linear_regression(X_train, y_train, X_test, y_test, params=None):
+    X_train, X_test = standard_scale_features(X_train, X_test)
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+    
+    predictions = predict_model.make_prediction(model, X_test, y_test)
+    metrics = predict_model.calculate_metrics("LinearRegression", y_test, predictions)
+    
+    return model, metrics
+
+
+def train_ridge_cv(X_train, y_train, X_test, y_test, params=None):
+    X_train, X_test = standard_scale_features(X_train, X_test)
+    model = RidgeCV(alphas=params.get('alphas', [1.0])) if params else RidgeCV()
+    model.fit(X_train, y_train)
+    
+    predictions = predict_model.make_prediction(model, X_test, y_test)
+    metrics = predict_model.calculate_metrics("RidgeCV", y_test, predictions)
+    
+    return model, metrics
+
+
+def train_lasso_cv(X_train, y_train, X_test, y_test, params):
+    X_train, X_test = standard_scale_features(X_train, X_test)
+    model = MultiTaskLassoCV(alphas=params.get('alphas', [1.0])) if params else MultiTaskLassoCV()
+    model.fit(X_train, y_train)
+    
+    predictions = predict_model.make_prediction(model, X_test, y_test)
+    metrics = predict_model.calculate_metrics("MultiTaskLassoCV", y_test, predictions)
+    
+    return model, metrics
+
+
+def train_random_forest(X_train, y_train, X_test, y_test, params=None):
+    params = params if params else {}
+    params["n_jobs"] = params.get("n_jobs", -1)
+    model = RandomForestRegressor(**params)
+    model.fit(X_train, y_train)
+    
+    predictions = predict_model.make_prediction(model, X_test, y_test)
+    metrics = predict_model.calculate_metrics("RandomForest", y_test, predictions)
+    
+    return model, metrics
+
+
+def train_extra_trees(X_train, y_train, X_test, y_test, params=None):
+    params = params if params else {}
+    params["n_jobs"] = params.get("n_jobs", -1)
+    model = ExtraTreesRegressor(**params)
+    model.fit(X_train, y_train)
+    
+    predictions = predict_model.make_prediction(model, X_test, y_test)
+    metrics = predict_model.calculate_metrics("ExtraTrees", y_test, predictions)
+    
+    return model, metrics
+
+
+def train_xgboost(X_train, y_train, X_test, y_test, params=None):
+    model = XGBRegressor(**params) if params else XGBRegressor()
+    model.fit(X_train, y_train)
+    
+    predictions = predict_model.make_prediction(model, X_test, y_test)
+    metrics = predict_model.calculate_metrics("XGBoost", y_test, predictions)
+    
+    return model, metrics
+
+
+def train_mlp(X_train, y_train, X_test, y_test, params=None):
+    X_train, X_test = min_max_scale_features(X_train, X_test)
+    y_train, y_test = min_max_scale_features(y_train, y_test)
+    
+    if params is None:
+        params = {'hidden_layer_sizes': (100,), 'activation': 'relu', 'solver': 'adam', 'batch_size': 'auto', 'max_iter': 200}
+    
+    model = Sequential()
+    for layer_size in params["hidden_layer_sizes"]:
+        model.add(Dense(layer_size, activation=params["activation"]))
+        model.add(Dropout(params["dropout_rate"]))
+    model.add(Dense(params["num_outputs"])) 
+    model.compile(optimizer=params["optimizer"], loss='mean_squared_error')
+    
+    model.fit(X_train, y_train, batch_size=params.get('batch_size', 32), epochs=params['epochs'], verbose=0)
+    
+    predictions = predict_model.make_prediction(model, X_test, y_test)
+    metrics = predict_model.calculate_metrics("MLP", y_test, predictions)
+    
+    return model, metrics
+
+
+def train_knn(X_train, y_train, X_test, y_test, params=None):
+    params = params if params else {}
+    params["n_jobs"] = params.get("n_jobs", -1)
+    model = KNeighborsRegressor(**params)
+    model.fit(X_train, y_train)
+    
+    predictions = predict_model.make_prediction(model, X_test, y_test)
+    metrics = predict_model.calculate_metrics("KNN", y_test, predictions)
+    
+    return model, metrics
+
+
+def train_decision_tree(X_train, y_train, X_test, y_test, params=None):
+    model = DecisionTreeRegressor(**params) if params else DecisionTreeRegressor()
+    model.fit(X_train, y_train)
+    
+    predictions = predict_model.make_prediction(model, X_test, y_test)
+    metrics = predict_model.calculate_metrics("DecisionTree", y_test, predictions)
+    
+    return model, metrics
     
 
 def time_series_cross_validation(model_name, X, y, params, n_splits=5):
@@ -159,16 +266,8 @@ def time_series_cross_validation(model_name, X, y, params, n_splits=5):
         X_train, X_test = X[train_index], X[test_index]
         y_train, y_test = y[train_index], y[test_index]
 
-        if model_name == "MLP":
-            trained_model = mlp_model(**params, num_outputs=y_test.shape[1])
-            trained_model.fit(X_train, y_train, batch_size=params['batch_size'], epochs=params['epochs'], verbose=0)
-        else:
-            model = MODELS[model_name](**params)
-            if hasattr(model, 'n_jobs'):
-                model.n_jobs = -1
-            trained_model = model.fit(X_train, y_train)
-        y_pred = trained_model.predict(X_test)
-        mse_scores.append(mean_squared_error(y_test, y_pred))
+        trained_model, metrics = train_models[model_name](X_train, y_train, X_test, y_test, params)
+        mse_scores.append(metrics["MSE"])
 
     return np.mean(mse_scores)
 
@@ -177,8 +276,6 @@ def objective_function(params, model_name, X_train, y_train):
     """
     Objective function for Hyperopt to minimize. Returns the cross-validated score of the given model and parameters.
     """
-    if model_name != "MLP":
-        X_train, y_train = X_train.values, y_train.values
     score = time_series_cross_validation(model_name, X_train, y_train, params)
     return {"loss": score, "status": STATUS_OK}
 
