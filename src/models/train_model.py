@@ -126,75 +126,83 @@ def mlp_model(hidden_layer_sizes, activation, batch_size, optimizer, epochs, dro
 
 
 def train_linear_regression(X_train, y_train, X_test, y_test, params=None):
+    y_test_index, y_test_columns = y_test.index, y_test.columns
     X_train, X_test = standard_scale_features(X_train, X_test)
     model = LinearRegression()
     model.fit(X_train, y_train)
     
-    predictions = predict_model.make_prediction(model, X_test, y_test)
+    predictions = predict_model.make_prediction(model, X_test, y_test, y_test_index, y_test_columns)
     metrics = predict_model.calculate_metrics("LinearRegression", y_test, predictions)
     
     return model, metrics
 
 
 def train_ridge_cv(X_train, y_train, X_test, y_test, params=None):
+    y_test_index, y_test_columns = y_test.index, y_test.columns
     X_train, X_test = standard_scale_features(X_train, X_test)
     model = RidgeCV(alphas=params.get('alphas', [1.0])) if params else RidgeCV()
     model.fit(X_train, y_train)
     
-    predictions = predict_model.make_prediction(model, X_test, y_test)
+    predictions = predict_model.make_prediction(model, X_test, y_test, y_test_index, y_test_columns)
     metrics = predict_model.calculate_metrics("RidgeCV", y_test, predictions)
     
     return model, metrics
 
 
 def train_lasso_cv(X_train, y_train, X_test, y_test, params):
+    y_test_index, y_test_columns = y_test.index, y_test.columns
     X_train, X_test = standard_scale_features(X_train, X_test)
     model = MultiTaskLassoCV(alphas=params.get('alphas', [1.0])) if params else MultiTaskLassoCV()
     model.fit(X_train, y_train)
     
-    predictions = predict_model.make_prediction(model, X_test, y_test)
+    predictions = predict_model.make_prediction(model, X_test, y_test, y_test_index, y_test_columns)
     metrics = predict_model.calculate_metrics("MultiTaskLassoCV", y_test, predictions)
     
     return model, metrics
 
 
 def train_random_forest(X_train, y_train, X_test, y_test, params=None):
+    y_test_index, y_test_columns = y_test.index, y_test.columns
     params = params if params else {}
     params["n_jobs"] = params.get("n_jobs", -1)
     model = RandomForestRegressor(**params)
     model.fit(X_train, y_train)
     
-    predictions = predict_model.make_prediction(model, X_test, y_test)
+    predictions = predict_model.make_prediction(model, X_test, y_test, y_test_index, y_test_columns)
     metrics = predict_model.calculate_metrics("RandomForest", y_test, predictions)
     
     return model, metrics
 
 
 def train_extra_trees(X_train, y_train, X_test, y_test, params=None):
+    y_test_index, y_test_columns = y_test.index, y_test.columns
     params = params if params else {}
     params["n_jobs"] = params.get("n_jobs", -1)
     model = ExtraTreesRegressor(**params)
     model.fit(X_train, y_train)
     
-    predictions = predict_model.make_prediction(model, X_test, y_test)
+    predictions = predict_model.make_prediction(model, X_test, y_test, y_test_index, y_test_columns)
     metrics = predict_model.calculate_metrics("ExtraTrees", y_test, predictions)
     
     return model, metrics
 
 
 def train_xgboost(X_train, y_train, X_test, y_test, params=None):
+    y_test_index, y_test_columns = y_test.index, y_test.columns
     model = XGBRegressor(**params) if params else XGBRegressor()
     model.fit(X_train, y_train)
     
-    predictions = predict_model.make_prediction(model, X_test, y_test)
+    predictions = predict_model.make_prediction(model, X_test, y_test, y_test_index, y_test_columns)
     metrics = predict_model.calculate_metrics("XGBoost", y_test, predictions)
     
     return model, metrics
 
 
 def train_mlp(X_train, y_train, X_test, y_test, params=None):
+    y_test_index, y_test_columns = y_test.index, y_test.columns
     X_train, X_test = min_max_scale_features(X_train, X_test)
     y_train, y_test = min_max_scale_features(y_train, y_test)
+    num_outputs = y_test.shape[1]
     
     if params is None:
         params = {'hidden_layer_sizes': (100,), 'activation': 'relu', 'solver': 'adam', 'batch_size': 'auto', 'max_iter': 200}
@@ -203,34 +211,36 @@ def train_mlp(X_train, y_train, X_test, y_test, params=None):
     for layer_size in params["hidden_layer_sizes"]:
         model.add(Dense(layer_size, activation=params["activation"]))
         model.add(Dropout(params["dropout_rate"]))
-    model.add(Dense(params["num_outputs"])) 
+    model.add(Dense(num_outputs)) 
     model.compile(optimizer=params["optimizer"], loss='mean_squared_error')
     
     model.fit(X_train, y_train, batch_size=params.get('batch_size', 32), epochs=params['epochs'], verbose=0)
     
-    predictions = predict_model.make_prediction(model, X_test, y_test)
+    predictions = predict_model.make_prediction(model, X_test, y_test, y_test_index, y_test_columns)
     metrics = predict_model.calculate_metrics("MLP", y_test, predictions)
     
     return model, metrics
 
 
 def train_knn(X_train, y_train, X_test, y_test, params=None):
+    y_test_index, y_test_columns = y_test.index, y_test.columns
     params = params if params else {}
     params["n_jobs"] = params.get("n_jobs", -1)
     model = KNeighborsRegressor(**params)
     model.fit(X_train, y_train)
     
-    predictions = predict_model.make_prediction(model, X_test, y_test)
+    predictions = predict_model.make_prediction(model, X_test, y_test, y_test_index, y_test_columns)
     metrics = predict_model.calculate_metrics("KNN", y_test, predictions)
     
     return model, metrics
 
 
 def train_decision_tree(X_train, y_train, X_test, y_test, params=None):
+    y_test_index, y_test_columns = y_test.index, y_test.columns
     model = DecisionTreeRegressor(**params) if params else DecisionTreeRegressor()
     model.fit(X_train, y_train)
     
-    predictions = predict_model.make_prediction(model, X_test, y_test)
+    predictions = predict_model.make_prediction(model, X_test, y_test, y_test_index, y_test_columns)
     metrics = predict_model.calculate_metrics("DecisionTree", y_test, predictions)
     
     return model, metrics

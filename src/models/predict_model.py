@@ -9,7 +9,7 @@ SAVE_RESULTS = "reports/predictions/"
 SAVE_MODELS = "models/"
 
 
-def make_prediction(model, X_test, y_test):
+def make_prediction(model, X_test, y_test, y_test_index, y_test_columns):
     """
     Generate predictions using the provided model and test features.
 
@@ -20,7 +20,7 @@ def make_prediction(model, X_test, y_test):
     """
     y_pred = model.predict(X_test)
     predictions_df = pd.DataFrame(
-        y_pred, index=y_test.index, columns=[f"{col}_pred" for col in y_test.columns]
+        y_pred, index=y_test_index, columns=[f"{col}_pred" for col in y_test_columns]
     )
     return predictions_df
 
