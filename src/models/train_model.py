@@ -17,6 +17,7 @@ from sklearn.metrics import mean_squared_error
 import numpy as np
 from hyperopt import hp, fmin, tpe, Trials, STATUS_OK
 from hyperopt.pyll.base import scope
+
 # tf.config.set_visible_devices([], 'GPU')
 
 PROCESSED_DATA_PATH = "data/processed/"
@@ -115,13 +116,21 @@ def min_max_scale_target(y_train, y_test):
     return y_train_scaled, y_test_scaled
 
 
-def mlp_model(hidden_layer_sizes, activation, batch_size, optimizer, epochs, dropout_rate, num_outputs):
+def mlp_model(
+    hidden_layer_sizes,
+    activation,
+    batch_size,
+    optimizer,
+    epochs,
+    dropout_rate,
+    num_outputs,
+):
     model = Sequential()
     for layer_size in hidden_layer_sizes:
         model.add(Dense(layer_size, activation=activation))
         model.add(Dropout(dropout_rate))
-    model.add(Dense(num_outputs)) 
-    model.compile(optimizer=optimizer, loss='mean_squared_error')
+    model.add(Dense(num_outputs))
+    model.compile(optimizer=optimizer, loss="mean_squared_error")
     return model
 
 
@@ -130,34 +139,44 @@ def train_linear_regression(X_train, y_train, X_test, y_test, params=None):
     X_train, X_test = standard_scale_features(X_train, X_test)
     model = LinearRegression()
     model.fit(X_train, y_train)
-    
-    predictions = predict_model.make_prediction(model, X_test, y_test, y_test_index, y_test_columns)
+
+    predictions = predict_model.make_prediction(
+        model, X_test, y_test, y_test_index, y_test_columns
+    )
     metrics = predict_model.calculate_metrics("LinearRegression", y_test, predictions)
-    
+
     return model, metrics
 
 
 def train_ridge_cv(X_train, y_train, X_test, y_test, params=None):
     y_test_index, y_test_columns = y_test.index, y_test.columns
     X_train, X_test = standard_scale_features(X_train, X_test)
-    model = RidgeCV(alphas=params.get('alphas', [1.0])) if params else RidgeCV()
+    model = RidgeCV(alphas=params.get("alphas", [1.0])) if params else RidgeCV()
     model.fit(X_train, y_train)
-    
-    predictions = predict_model.make_prediction(model, X_test, y_test, y_test_index, y_test_columns)
+
+    predictions = predict_model.make_prediction(
+        model, X_test, y_test, y_test_index, y_test_columns
+    )
     metrics = predict_model.calculate_metrics("RidgeCV", y_test, predictions)
-    
+
     return model, metrics
 
 
 def train_lasso_cv(X_train, y_train, X_test, y_test, params):
     y_test_index, y_test_columns = y_test.index, y_test.columns
     X_train, X_test = standard_scale_features(X_train, X_test)
-    model = MultiTaskLassoCV(alphas=params.get('alphas', [1.0])) if params else MultiTaskLassoCV()
+    model = (
+        MultiTaskLassoCV(alphas=params.get("alphas", [1.0]))
+        if params
+        else MultiTaskLassoCV()
+    )
     model.fit(X_train, y_train)
-    
-    predictions = predict_model.make_prediction(model, X_test, y_test, y_test_index, y_test_columns)
+
+    predictions = predict_model.make_prediction(
+        model, X_test, y_test, y_test_index, y_test_columns
+    )
     metrics = predict_model.calculate_metrics("MultiTaskLassoCV", y_test, predictions)
-    
+
     return model, metrics
 
 
@@ -167,10 +186,12 @@ def train_random_forest(X_train, y_train, X_test, y_test, params=None):
     params["n_jobs"] = params.get("n_jobs", -1)
     model = RandomForestRegressor(**params)
     model.fit(X_train, y_train)
-    
-    predictions = predict_model.make_prediction(model, X_test, y_test, y_test_index, y_test_columns)
+
+    predictions = predict_model.make_prediction(
+        model, X_test, y_test, y_test_index, y_test_columns
+    )
     metrics = predict_model.calculate_metrics("RandomForest", y_test, predictions)
-    
+
     return model, metrics
 
 
@@ -180,10 +201,12 @@ def train_extra_trees(X_train, y_train, X_test, y_test, params=None):
     params["n_jobs"] = params.get("n_jobs", -1)
     model = ExtraTreesRegressor(**params)
     model.fit(X_train, y_train)
-    
-    predictions = predict_model.make_prediction(model, X_test, y_test, y_test_index, y_test_columns)
+
+    predictions = predict_model.make_prediction(
+        model, X_test, y_test, y_test_index, y_test_columns
+    )
     metrics = predict_model.calculate_metrics("ExtraTrees", y_test, predictions)
-    
+
     return model, metrics
 
 
@@ -191,10 +214,12 @@ def train_xgboost(X_train, y_train, X_test, y_test, params=None):
     y_test_index, y_test_columns = y_test.index, y_test.columns
     model = XGBRegressor(**params) if params else XGBRegressor()
     model.fit(X_train, y_train)
-    
-    predictions = predict_model.make_prediction(model, X_test, y_test, y_test_index, y_test_columns)
+
+    predictions = predict_model.make_prediction(
+        model, X_test, y_test, y_test_index, y_test_columns
+    )
     metrics = predict_model.calculate_metrics("XGBoost", y_test, predictions)
-    
+
     return model, metrics
 
 
@@ -203,22 +228,36 @@ def train_mlp(X_train, y_train, X_test, y_test, params=None):
     X_train, X_test = min_max_scale_features(X_train, X_test)
     y_train, y_test = min_max_scale_features(y_train, y_test)
     num_outputs = y_test.shape[1]
-    
+
     if params is None:
-        params = {'hidden_layer_sizes': (100,), 'activation': 'relu', 'solver': 'adam', 'batch_size': 'auto', 'max_iter': 200}
-    
+        params = {
+            "hidden_layer_sizes": (100,),
+            "activation": "relu",
+            "solver": "adam",
+            "batch_size": "auto",
+            "max_iter": 200,
+        }
+
     model = Sequential()
     for layer_size in params["hidden_layer_sizes"]:
         model.add(Dense(layer_size, activation=params["activation"]))
         model.add(Dropout(params["dropout_rate"]))
-    model.add(Dense(num_outputs)) 
-    model.compile(optimizer=params["optimizer"], loss='mean_squared_error')
-    
-    model.fit(X_train, y_train, batch_size=params.get('batch_size', 32), epochs=params['epochs'], verbose=0)
-    
-    predictions = predict_model.make_prediction(model, X_test, y_test, y_test_index, y_test_columns)
+    model.add(Dense(num_outputs))
+    model.compile(optimizer=params["optimizer"], loss="mean_squared_error")
+
+    model.fit(
+        X_train,
+        y_train,
+        batch_size=params.get("batch_size", 32),
+        epochs=params["epochs"],
+        verbose=0,
+    )
+
+    predictions = predict_model.make_prediction(
+        model, X_test, y_test, y_test_index, y_test_columns
+    )
     metrics = predict_model.calculate_metrics("MLP", y_test, predictions)
-    
+
     return model, metrics
 
 
@@ -228,10 +267,12 @@ def train_knn(X_train, y_train, X_test, y_test, params=None):
     params["n_jobs"] = params.get("n_jobs", -1)
     model = KNeighborsRegressor(**params)
     model.fit(X_train, y_train)
-    
-    predictions = predict_model.make_prediction(model, X_test, y_test, y_test_index, y_test_columns)
+
+    predictions = predict_model.make_prediction(
+        model, X_test, y_test, y_test_index, y_test_columns
+    )
     metrics = predict_model.calculate_metrics("KNN", y_test, predictions)
-    
+
     return model, metrics
 
 
@@ -239,12 +280,14 @@ def train_decision_tree(X_train, y_train, X_test, y_test, params=None):
     y_test_index, y_test_columns = y_test.index, y_test.columns
     model = DecisionTreeRegressor(**params) if params else DecisionTreeRegressor()
     model.fit(X_train, y_train)
-    
-    predictions = predict_model.make_prediction(model, X_test, y_test, y_test_index, y_test_columns)
+
+    predictions = predict_model.make_prediction(
+        model, X_test, y_test, y_test_index, y_test_columns
+    )
     metrics = predict_model.calculate_metrics("DecisionTree", y_test, predictions)
-    
+
     return model, metrics
-    
+
 
 def time_series_cross_validation(model_name, X, y, params, n_splits=5):
     """
@@ -260,11 +303,12 @@ def time_series_cross_validation(model_name, X, y, params, n_splits=5):
     mse_scores = []
 
     for train_index, test_index in tscv.split(X):
-
         X_train, X_test = X.iloc[train_index], X.iloc[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
 
-        trained_model, metrics = train_models[model_name](X_train, y_train, X_test, y_test, params)
+        trained_model, metrics = train_models[model_name](
+            X_train, y_train, X_test, y_test, params
+        )
         mse_scores.append(metrics[model_name]["MSE"])
 
     return np.mean(mse_scores)
@@ -289,7 +333,7 @@ def define_hyperparameters_space(model_name):
             "max_depth": scope.int(hp.quniform("max_depth", 1, 50, 1)),
             "min_samples_split": scope.int(hp.quniform("min_samples_split", 2, 20, 1)),
             "min_samples_leaf": scope.int(hp.quniform("min_samples_leaf", 1, 20, 1)),
-        } 
+        }
 
     elif model_name == "RidgeCV":
         space = {

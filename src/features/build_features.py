@@ -33,12 +33,14 @@ def remove_sparse_columns(data: pd.DataFrame, threshold: float = 0.5) -> pd.Data
     print(f"Before removal, dataset shape: {data.shape}")
     valid_columns = data.columns[data.isna().mean() < threshold]
     removed_columns = data.columns[data.isna().mean() >= threshold]
-    
+
     if len(removed_columns) > 0:
-        print(f"Removing columns with >={threshold*100}% missing values: {list(removed_columns)}")
+        print(
+            f"Removing columns with >={threshold*100}% missing values: {list(removed_columns)}"
+        )
     else:
         print("No columns meet the threshold for removal.")
-    
+
     return data[valid_columns]
 
 
@@ -52,14 +54,16 @@ def data_slicing(data: pd.DataFrame, key_columns: list) -> pd.DataFrame:
     """
     valid_start = max(data[col].dropna().index.min() for col in key_columns)
     valid_end = min(data[col].dropna().index.max() for col in key_columns)
-    
-    print(f"Slicing data from index {valid_start} to {valid_end} based on key columns: {key_columns}")
-    
+
+    print(
+        f"Slicing data from index {valid_start} to {valid_end} based on key columns: {key_columns}"
+    )
+
     sliced_data = data[(data.index >= valid_start) & (data.index <= valid_end)]
-    
+
     print(f"Before slicing, dataset shape: {data.shape}")
     print(f"After slicing, dataset shape: {sliced_data.shape}")
-    
+
     return sliced_data
 
 
@@ -108,7 +112,7 @@ def remove_outliers(dataset, col):
     dataset.loc[:, col] = dataset[col]
     n_outliers = len(dataset) - len(dataset[col].dropna())
     print(f"Removed {n_outliers} from {col}")
-    
+
     return dataset
 
 
@@ -125,7 +129,7 @@ def check_nan_values(dataset, remove=False):
     if remove:
         dataset.dropna(inplace=True)
         print(f"Size of dataset after removing nan values {dataset.shape}")
-        
+
     return dataset
 
 

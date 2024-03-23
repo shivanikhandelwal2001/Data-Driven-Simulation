@@ -36,12 +36,13 @@ def calculate_metrics(model_name, y_test, y_pred):
     """
     return {
         model_name: {
-        "MAE": mean_absolute_error(y_test, y_pred),
-        "MSE": mean_squared_error(y_test, y_pred),
-        "RMSE": np.sqrt(mean_squared_error(y_test, y_pred)),
-        "R2 Score": r2_score(y_test, y_pred),
+            "MAE": mean_absolute_error(y_test, y_pred),
+            "MSE": mean_squared_error(y_test, y_pred),
+            "RMSE": np.sqrt(mean_squared_error(y_test, y_pred)),
+            "R2 Score": r2_score(y_test, y_pred),
+        }
     }
-    }
+
 
 def get_feature_importance(model, feature_columns, target_columns):
     """
@@ -97,7 +98,7 @@ def save_models_results(building_id, metrics):
     Save model's results in a CSV file for a specific building.
     """
     results = f"{SAVE_RESULTS}{building_id}_ML_Models_Results.csv"
-    
+
     if os.path.exists(results):
         df = pd.read_csv(results, index_col=0)
     else:
@@ -124,7 +125,7 @@ def save_best_params(building_id, model_name, params):
             existing_data = json.load(json_file)
     else:
         existing_data = {}
-        
+
     existing_data[model_name] = converted_params
 
     with open(file_name, "w") as json_file:
