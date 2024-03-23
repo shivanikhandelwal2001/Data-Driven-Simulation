@@ -349,7 +349,7 @@ def define_hyperparameters_space(model_name):
             "batch_size": hp.choice("batch_size", [28, 64, 128]),
             "optimizer": hp.choice("optimizer", ["Adadelta", "Adam", "Adamax"]),
             "epochs": scope.int(hp.quniform("epochs", 50, 1500, 10)),
-            "dropout_rate": hp.choice("dropout", [0.05, 0.75]),
+            "dropout_rate": hp.choice("dropout_rate", [0.05, 0.75]),
         }
 
     elif model_name == "KNN":

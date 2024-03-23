@@ -90,8 +90,36 @@ def hyperparameter_tuning(building_id, model_name, X_train, y_train):
                     trials=trials)
                     
         best_params = {key: int(value) if isinstance(value, float) and value.is_integer() else value for key, value in best.items()}
-        if "weights" in best_params:
+        
+        if model_name == "KNN":
             best_params['weights'] = "uniform" if best_params['weights'] == 0 else "distance"
+        elif model_name == "MLP":
+            mlp_space = {
+                "hidden_layer_sizes" : [
+                    (64,),
+                    (128,),
+                    (256,),
+                    (512,),
+                    (1024,),  # Single layer options
+                    (64, 64),
+                    (128, 128),
+                    (256, 256),  # Two layers options
+                    (64, 64, 64),
+                    (128, 128, 128),  # Three layers options
+                    (64, 64, 64, 64),
+                    (128, 128, 128, 128),  # Four layers options
+                ],
+                "activation": ["relu", "sigmoid", "tanh", "linear"],
+                "batch_size": [28, 64, 128],
+                "optimizer": ["Adadelta", "Adam", "Adamax"],
+                "dropout_rate": [0.05, 0.75]
+            }
+            
+            best_params["hidden_layer_sizes"] = list(mlp_space["hidden_layer_sizes"][best_params["hidden_layer_sizes"]])
+            best_params["activation"] = mlp_space["activation"][best_params["activation"]]
+            best_params["batch_size"] = mlp_space["batch_size"][best_params["batch_size"]]
+            best_params["optimizer"] = mlp_space["optimizer"][best_params["optimizer"]]
+            best_params["dropout_rate"] = mlp_space["dropout_rate"][best_params["dropout_rate"]]
 
     predict_model.save_best_params(building_id, model_name, best_params)
     print(f"Best parameters for {model_name} saved.")
@@ -141,7 +169,7 @@ def process_all_buildings(building_id, features, process=False):
         sub_data = visualize_building_data(building_id, features)
         preprocess_and_feature_engineer(building_id, sub_data)
         
-    Parallel(n_jobs=-1)(delayed(train_and_evaluate_with_hyperopt)(building_id, model, tuning=True) for model in model_names)
+    Parallel(n_jobs=-1)(delayed(train_and_evaluate_with_hyperopt)(building_id, model, tuning=False) for model in model_names)
 
 
 # List of building IDs to process
