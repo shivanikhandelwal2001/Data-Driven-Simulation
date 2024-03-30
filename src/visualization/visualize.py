@@ -1,190 +1,171 @@
+import os
+import matplotlib
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import plotly.express as px
+import seaborn as sns
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
-import seaborn as sns
-import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-
-FiGURES_PATH = "reports/figures/"
-
-# Define standard colors for plots
-COLORS = [
-    "blue",
-    "r",
-    "g",
-    "cyan",
-    "k",
-    "m",
-    "y",
-    "darkcyan",
-    "navy",
-    "magenta",
-    "purple",
-    "peru",
-]
+import plotly.graph_objects as go
+import plotly.express as px
 
 
-# Set standard style for matplotlib plots.
+plt.rcParams.update(
+    {
+        "font.size": 16,
+        "axes.titlesize": 18,
+        "axes.labelsize": 16,
+        "xtick.labelsize": 14,
+        "ytick.labelsize": 14,
+        "legend.fontsize": 14,
+        "lines.linewidth": 3,
+    }
+)
+FIGURES_PATH = "reports/figures/"
 
-plt.style.use("fivethirtyeight")
-plt.rcParams["figure.figsize"] = (20, 5)
-plt.rcParams["figure.dpi"] = 100
-plt.rcParams["lines.linewidth"] = 2
+
+# Helper function to ensure directory exists
+def ensure_dir(file_path):
+    if not os.path.exists(file_path):
+        os.makedirs(file_path)
 
 
-def save_figure(fig, file_name):
-    """Save the figure to a file."""
-    full_path = f"{FiGURES_PATH}{file_name}.png"
+# Function to save figures
+def save_figure(fig, building_id, subdirectory, file_name):
+    full_path = os.path.join(FIGURES_PATH, building_id, subdirectory)
+    ensure_dir(full_path)
+    file_path = os.path.join(full_path, f"{file_name}.png")
+    fig.tight_layout()
+
     if isinstance(fig, go.Figure):
-        fig.write_image(full_path)
+        fig.write_image(file_path)
     else:
-        fig.savefig(full_path)
+        fig.savefig(file_path, bbox_inches="tight")
+
+    plt.close(fig)
 
 
-def plot_pre_processed_raw_data(data, space_data):
-    """Plots data for each space and variable from the pre-processed raw data."""
-    for space in space_data:
-        for var in space_data[space]:
-            plt.figure(figsize=(20, 10))
-            plot_data = data.loc[:, (slice(None), var, slice(None), slice(None), space)]
-            ax = plot_data.plot(color=COLORS)
-
-            handles, labels = ax.get_legend_handles_labels()
-            new_labels = [label.split(", ")[0] for label in labels]
-            ax.legend(handles, new_labels)
-
-            plt.title(f"{space} {var}")
-            plt.xlabel("DateTime")
-            plt.ylabel(var)
-            plt.show()
+# Plot line
+def plot_line(data, column, building_id):
+    fig, ax = plt.subplots(figsize=(20, 10))
+    data[column].plot(ax=ax, color="tab:blue", title=f"{column} over Time")
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Value")
+    save_figure(fig, building_id, "line_plots", f"{column}")
 
 
-def plot_pre_processed_final_data(result_df):
-    """Plots final processed data for each column in the DataFrame."""
-    for df in result_df.columns:
-        plt.figure(figsize=(20, 10))
-        plt.plot(result_df.index, result_df[df], color=COLORS[0])
-
-        plt.title(df)
-        plt.xlabel("DateTime")
-        plt.ylabel(df)
-        plt.show()
+# Plot autocorrelation
+def plot_autocorrelation(data, column, building_id, lags=40):
+    fig, ax = plt.subplots(figsize=(12, 6))
+    sm.graphics.tsa.plot_acf(data[column].dropna(), lags=lags, ax=ax)
+    ax.set_title(f"Autocorrelation for {column}")
+    save_figure(fig, building_id, "autocorrelation_plots", f"autocorr_{column}")
 
 
-def plot_line(data, column):
-    """Create a line plot for a specific column in the dataset."""
-    fig = px.line(data, y=column, title=column)
-    fig.update_layout(title_x=0.5)
-    fig.show()
-
-
-def plot_autocorrelation(data, column, lags=40):
-    """Plot autocorrelation for a specified column."""
-    autocorrelation = sm.tsa.acf(data[column], nlags=lags, fft=False)
-    plt.figure(figsize=(12, 5))
-    plt.stem(autocorrelation)
-    plt.title("Autocorrelation Plot " + column)
-    plt.xlabel("Lag")
-    plt.ylabel("Autocorrelation")
-    plt.show()
-
-
-def plot_partial_autocorrelation(data, column, lags=40):
-    """Plot partial autocorrelation for a specified column."""
-    autocorrelation = sm.tsa.pacf(data[column], nlags=lags)
-    plt.figure(figsize=(12, 5))
-    plt.stem(autocorrelation)
-    plt.title("Partial Autocorrelation Plot " + column)
-    plt.xlabel("Lag")
-    plt.ylabel("Partial Autocorrelation")
-    plt.show()
-
-
-def two_line_plot_secondary_axis(
-    x, y1, y2, y1_name="y1", y2_name="y2", title="", dash_secondary=False
-):
-    """Create a two-line plot with a secondary y-axis."""
-    fig = make_subplots(specs=[[{"secondary_y": True}]])
-    fig.add_trace(go.Scatter(x=x, y=y1, name=y1_name), secondary_y=False)
-    fig.add_trace(
-        go.Scatter(
-            x=x, y=y2, name=y2_name, line=dict(dash="dash") if dash_secondary else None
-        ),
-        secondary_y=True,
+# Plot partial autocorrelation
+def plot_partial_autocorrelation(data, column, building_id, lags=40):
+    fig, ax = plt.subplots(figsize=(12, 6))
+    sm.graphics.tsa.plot_pacf(data[column].dropna(), lags=lags, ax=ax)
+    ax.set_title(f"Partial Autocorrelation for {column}")
+    save_figure(
+        fig, building_id, "partial_autocorrelation_plots", f"part_autocorr_{column}"
     )
-    fig.update_layout(title_text=title)
-    fig.show()
 
 
-def two_line_plot(x, y1, y2, title, y1_name="y1", y2_name="y2"):
-    """Create a two-line plot."""
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=x, y=y1, name=y1_name))
-    fig.add_trace(go.Scatter(x=x, y=y2, name=y2_name, line=dict(dash="dash")))
-    fig.update_layout(title_text=title)
-    return fig
+# Two line plot
+def two_line_plot(data, col1, col2, building_id):
+    """Create a two-line plot for features relationship"""
+    fig, ax1 = plt.subplots(figsize=(20, 10))
+
+    color1 = "tab:blue"
+    color2 = "tab:orange"
+
+    ax1.plot(data.index, data[col1], label=col1, color=color1, linewidth=3)
+    ax1.set_xlabel("DateTime")
+    ax1.set_ylabel(col1, color=color1)
+    ax1.tick_params(axis="y", labelcolor=color1)
+
+    ax2 = ax1.twinx()
+    ax2.plot(
+        data.index, data[col2], label=col2, color=color2, linestyle="--", linewidth=3
+    )
+    ax2.set_ylabel(col2, color=color2)
+    ax2.tick_params(axis="y", labelcolor=color2)
+
+    fig.suptitle(f"{col1} and {col2}", fontsize=20)
+    ax1.legend(loc="upper left", fontsize=14)
+    ax2.legend(loc="upper right", fontsize=14)
+    save_figure(
+        fig, building_id, "two_line_plots", f"Relationship between {col1} {col2}"
+    )
 
 
-def plot_binary_outliers(dataset, col, outlier_col, reset_index=False):
-    """Plot binary outliers in the dataset."""
+# Plot binary outliers
+def plot_binary_outliers(dataset, col, outlier_col, building_id, reset_index=False):
     dataset = dataset.dropna(subset=[col, outlier_col])
     dataset[outlier_col] = dataset[outlier_col].astype("bool")
-
     if reset_index:
         dataset = dataset.reset_index()
-
     fig, ax = plt.subplots()
+    ax.plot(dataset[col], marker="o", linestyle="", alpha=0.7)
     ax.plot(
-        dataset.index[~dataset[outlier_col]], dataset[col][~dataset[outlier_col]], "+"
+        dataset.loc[dataset[outlier_col], col],
+        marker="x",
+        linestyle="",
+        color="r",
+        label="Outlier",
     )
+    ax.set_title(f"Outliers in {col}")
+    ax.legend()
+    save_figure(fig, building_id, "binary_outliers_plots", f"{col}_outliers")
+
+
+# Plot data distribution
+def plot_data_distribution(dataset, col, building_id):
+    fig, ax = plt.subplots()
+    sns.violinplot(data=dataset, y=col, ax=ax)
+    ax.set_title(f"Distribution of {col}")
+    save_figure(fig, building_id, "data_distribution_plots", f"{col}_distribution")
+
+
+# Plot metrics
+def plot_metrics(metrics, model_name, building_id):
+    fig, ax = plt.subplots()
+    sns.barplot(x=list(metrics.keys()), y=list(metrics.values()), ax=ax)
+    ax.set_title(f"Metrics for {model_name}")
+    save_figure(fig, building_id, "metrics_plots", f"{model_name}_metrics")
+
+
+# Plot predictions
+def plot_predictions(model_name, y_test, y_pred, col, building_id):
+    fig, ax = plt.subplots(figsize=(20, 10))
+    ax.plot(y_test.index, y_test[col], label="Actual", color="tab:blue")
     ax.plot(
-        dataset.index[dataset[outlier_col]], dataset[col][dataset[outlier_col]], "r+"
+        y_test.index,
+        y_pred[f"{col}_pred"],
+        label="Predicted",
+        linestyle="--",
+        color="tab:orange",
+    )
+    ax.set_title(f"{model_name} Predictions for {col}")
+    ax.legend()
+    save_figure(
+        fig, building_id, "predictions_plots", f"{model_name}_{col}_predictions"
     )
 
-    plt.legend(["no outlier", "outlier"], loc="upper right")
-    plt.xlabel("Samples")
-    plt.ylabel(col)
-    plt.show()
 
-
-def plot_data_distribution(dataset, col):
-    """Plot the data distribution as a violin plot."""
-    sns.violinplot(y=col, data=dataset, inner="box")
-    plt.title(f"Distribution of {col}")
-    plt.show()
-
-
-def plot_metrics(metrics, model_name):
-    """Plot model metrics of predictions."""
-    fig = px.bar(
-        x=list(metrics.keys()),
-        y=list(metrics.values()),
-        title=f"{model_name} Model Metrics",
-    )
-    fig.show()
-
-
-def plot_predictions(model_name, y_test, y_pred, col):
-    """Plot actual and predicted values graph."""
-    fig = px.line()
-    fig.add_scatter(x=y_test.index, y=y_test[col], mode="lines", name="Actual")
-    fig.add_scatter(
-        x=y_test.index, y=y_pred[col + "_pred"], mode="lines", name="Predicted"
-    )
-    fig.update_layout(
-        title=model_name + " " + col, xaxis_title="Date", yaxis_title="Value"
-    )
-    fig.show()
-
-
-def feature_importance_plot(model_name, feat_df, col):
-    """Plot features importance graph for a target variable."""
-    sub_df = feat_df[[col]]
+# Feature importance plot
+def feature_importance_plot(model_name, feat_df, col, building_id):
+    sub_df = feat_df[[col]].copy()
     sub_df["_abs_imp"] = np.abs(sub_df[col])
     sub_df = sub_df.sort_values("_abs_imp", ascending=False).drop(columns="_abs_imp")
-    fig = px.bar(
-        sub_df.head(15), x=sub_df.index[:15], y=col, title=model_name + " " + col
+    sub_df = sub_df.head(10)
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+    sns.barplot(x=sub_df[col], y=sub_df.index, ax=ax, orient="h")
+    ax.set_title(f"Feature Importance for {model_name} - {col}")
+    save_figure(
+        fig, building_id, "feature_importance_plots", f"{model_name}_{col}_importance"
     )
-    fig.show()

@@ -74,7 +74,7 @@ def get_input_output_features(data, target_columns):
     return X, y
 
 
-def standard_scale_features(X_train, X_test):
+def standard_scale(train, test):
     """
     Scale features using standard scaler.
 
@@ -83,9 +83,9 @@ def standard_scale_features(X_train, X_test):
     :return: Scaled training and testing features.
     """
     scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
-    return X_train_scaled, X_test_scaled
+    train_scaled = scaler.fit_transform(train)
+    test_scaled = scaler.transform(test)
+    return train_scaled, test_scaled, scaler
 
 
 def min_max_scale_features(X_train, X_test):
@@ -96,10 +96,10 @@ def min_max_scale_features(X_train, X_test):
     :param X_test: Testing input features.
     :return: Scaled training and testing features.
     """
-    scaler = MinMaxScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
-    return X_train_scaled, X_test_scaled
+    scaler_feature = MinMaxScaler()
+    X_train_scaled = scaler_feature.fit_transform(X_train)
+    X_test_scaled = scaler_feature.transform(X_test)
+    return X_train_scaled, X_test_scaled, scaler_feature
 
 
 def min_max_scale_target(y_train, y_test):
@@ -110,33 +110,17 @@ def min_max_scale_target(y_train, y_test):
     :param y_test: Testing input target variables.
     :return: Scaled training and testing features.
     """
-    scaler = MinMaxScaler()
-    y_train_scaled = scaler.fit_transform(y_train.reshape(-1, 1)).ravel()
-    y_test_scaled = scaler.transform(y_test.reshape(-1, 1)).ravel()
-    return y_train_scaled, y_test_scaled
-
-
-def mlp_model(
-    hidden_layer_sizes,
-    activation,
-    batch_size,
-    optimizer,
-    epochs,
-    dropout_rate,
-    num_outputs,
-):
-    model = Sequential()
-    for layer_size in hidden_layer_sizes:
-        model.add(Dense(layer_size, activation=activation))
-        model.add(Dropout(dropout_rate))
-    model.add(Dense(num_outputs))
-    model.compile(optimizer=optimizer, loss="mean_squared_error")
-    return model
+    scaler_target = MinMaxScaler()
+    y_train_scaled = scaler_target.fit_transform(y_train.reshape(-1, 1)).ravel()
+    y_test_scaled = scaler_target.transform(y_test.reshape(-1, 1)).ravel()
+    return y_train_scaled, y_test_scaled, scaler_target
 
 
 def train_linear_regression(X_train, y_train, X_test, y_test, params=None):
     y_test_index, y_test_columns = y_test.index, y_test.columns
-    X_train, X_test = standard_scale_features(X_train, X_test)
+    X_train, X_test, scaler_X = standard_scale(X_train, X_test)
+    y_train, y_test, scaler_y = standard_scale(y_train, y_test)
+
     model = LinearRegression()
     model.fit(X_train, y_train)
 
@@ -144,13 +128,20 @@ def train_linear_regression(X_train, y_train, X_test, y_test, params=None):
         model, X_test, y_test, y_test_index, y_test_columns
     )
     metrics = predict_model.calculate_metrics("LinearRegression", y_test, predictions)
+    predictions = pd.DataFrame(
+        scaler_y.inverse_transform(predictions),
+        index=y_test_index,
+        columns=[f"{col}_pred" for col in y_test_columns],
+    )
 
-    return model, metrics
+    return model, metrics, predictions
 
 
 def train_ridge_cv(X_train, y_train, X_test, y_test, params=None):
     y_test_index, y_test_columns = y_test.index, y_test.columns
-    X_train, X_test = standard_scale_features(X_train, X_test)
+    X_train, X_test, scaler_X = standard_scale(X_train, X_test)
+    y_train, y_test, scaler_y = standard_scale(y_train, y_test)
+
     model = RidgeCV(alphas=params.get("alphas", [1.0])) if params else RidgeCV()
     model.fit(X_train, y_train)
 
@@ -158,13 +149,20 @@ def train_ridge_cv(X_train, y_train, X_test, y_test, params=None):
         model, X_test, y_test, y_test_index, y_test_columns
     )
     metrics = predict_model.calculate_metrics("RidgeCV", y_test, predictions)
+    predictions = pd.DataFrame(
+        scaler_y.inverse_transform(predictions),
+        index=y_test_index,
+        columns=[f"{col}_pred" for col in y_test_columns],
+    )
 
-    return model, metrics
+    return model, metrics, predictions
 
 
 def train_lasso_cv(X_train, y_train, X_test, y_test, params):
     y_test_index, y_test_columns = y_test.index, y_test.columns
-    X_train, X_test = standard_scale_features(X_train, X_test)
+    X_train, X_test, scaler_X = standard_scale(X_train, X_test)
+    y_train, y_test, scaler_y = standard_scale(y_train, y_test)
+
     model = (
         MultiTaskLassoCV(alphas=params.get("alphas", [1.0]))
         if params
@@ -176,8 +174,13 @@ def train_lasso_cv(X_train, y_train, X_test, y_test, params):
         model, X_test, y_test, y_test_index, y_test_columns
     )
     metrics = predict_model.calculate_metrics("MultiTaskLassoCV", y_test, predictions)
+    predictions = pd.DataFrame(
+        scaler_y.inverse_transform(predictions),
+        index=y_test_index,
+        columns=[f"{col}_pred" for col in y_test_columns],
+    )
 
-    return model, metrics
+    return model, metrics, predictions
 
 
 def train_random_forest(X_train, y_train, X_test, y_test, params=None):
@@ -192,7 +195,7 @@ def train_random_forest(X_train, y_train, X_test, y_test, params=None):
     )
     metrics = predict_model.calculate_metrics("RandomForest", y_test, predictions)
 
-    return model, metrics
+    return model, metrics, predictions
 
 
 def train_extra_trees(X_train, y_train, X_test, y_test, params=None):
@@ -207,7 +210,7 @@ def train_extra_trees(X_train, y_train, X_test, y_test, params=None):
     )
     metrics = predict_model.calculate_metrics("ExtraTrees", y_test, predictions)
 
-    return model, metrics
+    return model, metrics, predictions
 
 
 def train_xgboost(X_train, y_train, X_test, y_test, params=None):
@@ -220,14 +223,14 @@ def train_xgboost(X_train, y_train, X_test, y_test, params=None):
     )
     metrics = predict_model.calculate_metrics("XGBoost", y_test, predictions)
 
-    return model, metrics
+    return model, metrics, predictions
 
 
 def train_mlp(X_train, y_train, X_test, y_test, params=None):
     y_test_index, y_test_columns = y_test.index, y_test.columns
-    X_train, X_test = min_max_scale_features(X_train, X_test)
-    y_train, y_test = min_max_scale_features(y_train, y_test)
     num_outputs = y_test.shape[1]
+    X_train, X_test, scaler_X = min_max_scale_features(X_train, X_test)
+    y_train, y_test, scaler_y = min_max_scale_features(y_train, y_test)
 
     if params is None:
         params = {
@@ -257,8 +260,13 @@ def train_mlp(X_train, y_train, X_test, y_test, params=None):
         model, X_test, y_test, y_test_index, y_test_columns
     )
     metrics = predict_model.calculate_metrics("MLP", y_test, predictions)
+    predictions = pd.DataFrame(
+        scaler_y.inverse_transform(predictions),
+        index=y_test_index,
+        columns=[f"{col}_pred" for col in y_test_columns],
+    )
 
-    return model, metrics
+    return model, metrics, predictions
 
 
 def train_knn(X_train, y_train, X_test, y_test, params=None):
@@ -273,7 +281,7 @@ def train_knn(X_train, y_train, X_test, y_test, params=None):
     )
     metrics = predict_model.calculate_metrics("KNN", y_test, predictions)
 
-    return model, metrics
+    return model, metrics, predictions
 
 
 def train_decision_tree(X_train, y_train, X_test, y_test, params=None):
@@ -286,7 +294,7 @@ def train_decision_tree(X_train, y_train, X_test, y_test, params=None):
     )
     metrics = predict_model.calculate_metrics("DecisionTree", y_test, predictions)
 
-    return model, metrics
+    return model, metrics, predictions
 
 
 def time_series_cross_validation(model_name, X, y, params, n_splits=5):
@@ -306,7 +314,7 @@ def time_series_cross_validation(model_name, X, y, params, n_splits=5):
         X_train, X_test = X.iloc[train_index], X.iloc[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
 
-        trained_model, metrics = train_models[model_name](
+        trained_model, metrics, _ = train_models[model_name](
             X_train, y_train, X_test, y_test, params
         )
         mse_scores.append(metrics[model_name]["MSE"])

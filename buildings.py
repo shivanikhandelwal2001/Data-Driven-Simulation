@@ -10,8 +10,9 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.tree import DecisionTreeRegressor
 from hyperopt import hp, fmin, tpe, Trials
-from joblib import Parallel, delayed
+from joblib import Parallel, delayed, load
 import json
+import os
 
 
 model_names = [
@@ -49,18 +50,21 @@ def visualize_building_data(building_id, features):
     """Visualize data for a single building."""
     data = build_features.load_preprocess_data(building_id, features)
 
-    # for col in data.columns:
-    #     visualize.plot_line(data, col)
-    #     visualize.plot_autocorrelation(data, col)
-    #     visualize.plot_partial_autocorrelation(data, col)
+    for col in data.columns:
+        visualize.plot_line(data, col, building_id)
+        visualize.plot_autocorrelation(data, col, building_id)
+        visualize.plot_partial_autocorrelation(data, col, building_id)
+        visualize.two_line_plot(data, "Gas_volume", col, building_id)
 
     data = build_features.remove_sparse_columns(data, threshold=0.3)
     sub_data = build_features.data_slicing(data, data.columns)
 
-    # for col in sub_data.columns:
-    #     dataset = build_features.mark_outliers_chauvenet(sub_data, col)
-    #     visualize.plot_binary_outliers(dataset, col, col+"_outlier", reset_index=True)
-    #     visualize.plot_data_distribution(sub_data, col)
+    for col in sub_data.columns:
+        dataset = build_features.mark_outliers_chauvenet(sub_data, col)
+        visualize.plot_binary_outliers(
+            dataset, col, col + "_outlier", building_id, reset_index=True
+        )
+        visualize.plot_data_distribution(sub_data, col, building_id)
 
     return sub_data
 
@@ -173,19 +177,26 @@ def train_and_evaluate_with_hyperopt(building_id, model_name, tuning=False):
     if not best_params:
         print(f"No best parameters found for {model_name}.")
 
-    trained_model, metrics = train_model.train_models[model_name](
+    trained_model, metrics, predictions = train_model.train_models[model_name](
         X_train, y_train, X_test, y_test, best_params
     )
+
     predict_model.save_models(building_id, model_name, trained_model)
     predict_model.save_models_results(building_id, metrics)
+    predict_model.save_predictions(building_id, model_name, predictions)
 
     for target, metric in metrics[model_name].items():
         print(f"Metrics for {target} in {model_name}:\n", metric, "\n")
 
-    if model_name not in ["KNN", "MLP"]:
+    for col in y_test.columns:
+        visualize.plot_predictions(model_name, y_test, predictions, col, building_id)
+
+    if model_name not in ["KNN"]:
         feat_df = predict_model.get_feature_importance(
             trained_model, feature_columns, target_columns
         )
+        for col in feat_df.columns:
+            visualize.feature_importance_plot(model_name, feat_df, col, building_id)
 
 
 def process_all_buildings(building_id, features, process=False):

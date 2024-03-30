@@ -89,7 +89,9 @@ def save_predictions(building_id, model_name, predictions):
     """
     Save the model predictions to a CSV file.
     """
-    file_name = f"{SAVE_RESULTS}{building_id}_{model_name}_predictions.csv"
+    file_name = (
+        f"{SAVE_RESULTS}model_predictions/{building_id}_{model_name}_predictions.csv"
+    )
     predictions.to_csv(file_name)
 
 
