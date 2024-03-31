@@ -56,11 +56,12 @@ def visualize_building_data(building_id, features):
         visualize.plot_partial_autocorrelation(data, col, building_id)
         visualize.two_line_plot(data, "Gas_volume", col, building_id)
 
-    data = build_features.remove_sparse_columns(data, threshold=0.3)
+    data = build_features.remove_sparse_columns(data, threshold=0.2)
     sub_data = build_features.data_slicing(data, data.columns)
 
     for col in sub_data.columns:
         dataset = build_features.mark_outliers_chauvenet(sub_data, col)
+        sub_data = build_features.remove_outliers(sub_data, col)
         visualize.plot_binary_outliers(
             dataset, col, col + "_outlier", building_id, reset_index=True
         )
@@ -244,8 +245,8 @@ features = [
     "Gas_volume",
     "Outside_air_temperature",
     "Outside_relative_humidity",
-    "Wind speed",
-    "Total rainfall",
+    "Wind_speed",
+    "Total_rainfall",
 ]
 
 # Process all buildings

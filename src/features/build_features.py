@@ -99,7 +99,7 @@ def mark_outliers_chauvenet(dataset, col, C=2):
     return dataset
 
 
-def remove_outliers(dataset, col):
+def remove_outliers(sub_data, col):
     """
     Remove detected outliers from the dataset for a specified column.
 
@@ -107,13 +107,14 @@ def remove_outliers(dataset, col):
     :param col: Column from which to remove outliers.
     :return: DataFrame with outliers removed.
     """
-    dataset = mark_outliers_chauvenet(dataset, col)
+    dataset = mark_outliers_chauvenet(sub_data, col)
     dataset.loc[dataset[col + "_outlier"], col] = np.nan
-    dataset.loc[:, col] = dataset[col]
-    n_outliers = len(dataset) - len(dataset[col].dropna())
-    print(f"Removed {n_outliers} from {col}")
+    
+    sub_data.loc[:, col] = dataset[col]
+    n_outliers = dataset[col + "_outlier"].sum()
+    print(f"Removed {n_outliers} outliers from {col}")
 
-    return dataset
+    return sub_data
 
 
 def check_nan_values(dataset, remove=False):
