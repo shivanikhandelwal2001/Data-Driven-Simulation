@@ -70,15 +70,20 @@ def visualize_building_data(building_id, features):
     return sub_data
 
 
-def preprocess_and_feature_engineer(building_id, sub_data):
+def preprocess_and_feature_engineer(building_id, sub_data, additional_features):
     """Preprocess and perform feature engineering on building data."""
-    data_lags = build_features.create_lags_features(sub_data)
-    data_lags = build_features.check_nan_values(data_lags, remove=True)
-    data_imputed = build_features.fill_missing_values(data_lags)
+    data = build_features.create_lags_features(sub_data)    
+    if additional_features:
+        data = build_features.add_rolling_features(data)
+        data = build_features.add_time_features(data)
+        
+    data = build_features.check_nan_values(data, remove=True)
+    data_imputed = build_features.fill_missing_values(data)
+    
     build_features.save_processed_data(data_imputed, building_id)
 
 
-def hyperparameter_tuning(building_id, model_name, X_train, y_train):
+def hyperparameter_tuning(building_id, model_name, X, y):
     """
     Perform hyperparameter tuning and save the best parameters for a model.
     """
@@ -91,7 +96,7 @@ def hyperparameter_tuning(building_id, model_name, X_train, y_train):
         trials = Trials()
         best = fmin(
             fn=lambda params: train_model.objective_function(
-                params, model_name, X_train, y_train
+                params, model_name, X, y
             ),
             space=space,
             algo=tpe.suggest,
@@ -155,7 +160,6 @@ def train_and_evaluate_with_hyperopt(building_id, model_name, tuning=False):
     Train a model using the best parameters stored in a JSON file.
     """
     data = train_model.load_processed_data(building_id)
-    train, test = train_model.split_data(data)
 
     target_columns = [
         col
@@ -165,21 +169,22 @@ def train_and_evaluate_with_hyperopt(building_id, model_name, tuning=False):
 
     feature_columns = [col for col in data.columns if col not in target_columns]
 
-    X_train, y_train = train_model.get_input_output_features(train, target_columns)
-    X_test, y_test = train_model.get_input_output_features(test, target_columns)
+    X, y = train_model.get_input_output_features(data, target_columns)
 
     if tuning:
-        hyperparameter_tuning(building_id, model_name, X_train, y_train)
+        hyperparameter_tuning(building_id, model_name, X, y)
 
     params = f"{SAVE_MODELS}models_best_params/{building_id}_best_params.json"
-    with open(params, "r") as json_file:
-        best_params = json.load(json_file).get(model_name, {})
+    best_params = {}
+    if os.path.exists(params):
+        with open(params, "r") as json_file:
+            best_params = json.load(json_file).get(model_name, {})
 
     if not best_params:
         print(f"No best parameters found for {model_name}.")
 
     trained_model, metrics, predictions = train_model.train_models[model_name](
-        X_train, y_train, X_test, y_test, best_params
+        X, y, best_params
     )
 
     predict_model.save_models(building_id, model_name, trained_model)
@@ -189,8 +194,8 @@ def train_and_evaluate_with_hyperopt(building_id, model_name, tuning=False):
     for target, metric in metrics[model_name].items():
         print(f"Metrics for {target} in {model_name}:\n", metric, "\n")
 
-    for col in y_test.columns:
-        visualize.plot_predictions(model_name, y_test, predictions, col, building_id)
+    for col in y.columns:
+        visualize.plot_predictions(model_name, y, predictions, col, building_id)
 
     if model_name not in ["KNN"]:
         feat_df = predict_model.get_feature_importance(
@@ -206,7 +211,7 @@ def process_all_buildings(building_id, features, process=False):
     if process:
         process_building_data(building_id)
         sub_data = visualize_building_data(building_id, features)
-        preprocess_and_feature_engineer(building_id, sub_data)
+        preprocess_and_feature_engineer(building_id, sub_data, additional_features=True)
 
     Parallel(n_jobs=-1)(
         delayed(train_and_evaluate_with_hyperopt)(building_id, model, tuning=False)

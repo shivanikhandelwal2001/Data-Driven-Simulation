@@ -82,21 +82,21 @@ def two_line_plot(data, col1, col2, building_id):
     color1 = "tab:blue"
     color2 = "tab:orange"
 
-    ax1.plot(data.index, data[col1], label=col1, color=color1, linewidth=3)
+    ax1.plot(data.index, data[col1], label=col1, color=color1)
     ax1.set_xlabel("DateTime")
     ax1.set_ylabel(col1, color=color1)
     ax1.tick_params(axis="y", labelcolor=color1)
 
     ax2 = ax1.twinx()
     ax2.plot(
-        data.index, data[col2], label=col2, color=color2, linestyle="--", linewidth=3
+        data.index, data[col2], label=col2, color=color2, linestyle="--"
     )
     ax2.set_ylabel(col2, color=color2)
     ax2.tick_params(axis="y", labelcolor=color2)
 
-    fig.suptitle(f"{col1} and {col2}", fontsize=20)
-    ax1.legend(loc="upper left", fontsize=14)
-    ax2.legend(loc="upper right", fontsize=14)
+    fig.suptitle(f"{col1} and {col2}")
+    ax1.legend(loc="upper left")
+    ax2.legend(loc="upper right")
     save_figure(
         fig, building_id, "two_line_plots", f"Relationship between {col1} {col2}"
     )

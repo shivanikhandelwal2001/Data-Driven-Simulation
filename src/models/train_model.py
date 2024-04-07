@@ -17,6 +17,7 @@ from sklearn.metrics import mean_squared_error
 import numpy as np
 from hyperopt import hp, fmin, tpe, Trials, STATUS_OK
 from hyperopt.pyll.base import scope
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 # tf.config.set_visible_devices([], 'GPU')
 
@@ -74,7 +75,7 @@ def get_input_output_features(data, target_columns):
     return X, y
 
 
-def standard_scale(train, test):
+def standard_scale(train, test=None):
     """
     Scale features using standard scaler.
 
@@ -84,11 +85,14 @@ def standard_scale(train, test):
     """
     scaler = StandardScaler()
     train_scaled = scaler.fit_transform(train)
-    test_scaled = scaler.transform(test)
-    return train_scaled, test_scaled, scaler
+    if test is not None:
+        test_scaled = scaler.transform(test)
+        return train_scaled, test_scaled, scaler
+    
+    return train_scaled, scaler
 
 
-def min_max_scale_features(X_train, X_test):
+def min_max_scale_features(train, test=None):
     """
     Scale features using MinMax scaler.
 
@@ -96,151 +100,305 @@ def min_max_scale_features(X_train, X_test):
     :param X_test: Testing input features.
     :return: Scaled training and testing features.
     """
-    scaler_feature = MinMaxScaler()
-    X_train_scaled = scaler_feature.fit_transform(X_train)
-    X_test_scaled = scaler_feature.transform(X_test)
-    return X_train_scaled, X_test_scaled, scaler_feature
+    scaler = MinMaxScaler()
+    train_scaled = scaler.fit_transform(train)
+    if test is not None:
+        test_scaled = scaler.transform(test)
+        return train_scaled, test_scaled, scaler
+    
+    return train_scaled, scaler
 
 
-def min_max_scale_target(y_train, y_test):
-    """
-    Scale Target variables using MinMax scaler.
-
-    :param y_train: Training input target variables.
-    :param y_test: Testing input target variables.
-    :return: Scaled training and testing features.
-    """
-    scaler_target = MinMaxScaler()
-    y_train_scaled = scaler_target.fit_transform(y_train.reshape(-1, 1)).ravel()
-    y_test_scaled = scaler_target.transform(y_test.reshape(-1, 1)).ravel()
-    return y_train_scaled, y_test_scaled, scaler_target
-
-
-def train_linear_regression(X_train, y_train, X_test, y_test, params=None):
-    y_test_index, y_test_columns = y_test.index, y_test.columns
-    X_train, X_test, scaler_X = standard_scale(X_train, X_test)
-    y_train, y_test, scaler_y = standard_scale(y_train, y_test)
-
+def train_linear_regression(X, y, params=None, tuning=False):
+    y_index, y_columns = y.index, y.columns
+    model_name = "LinearRegression"
+    
+    tscv = TimeSeriesSplit(n_splits=5)
     model = LinearRegression()
-    model.fit(X_train, y_train)
+    metrics_score = {model_name:
+        {
+            "MAE": [],
+            "MSE": [],
+            "RMSE": [],
+            "R2 Score": [],
+        }}
 
+    for train_index, test_index in tscv.split(X):
+        X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+        
+        X_train, X_test, scaler_X = standard_scale(X_train, X_test)
+        y_train, y_test, scaler_y = standard_scale(y_train, y_test)
+
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        
+        metrics_score[model_name]["MAE"].append(mean_absolute_error(y_test, y_pred))
+        metrics_score[model_name]["MSE"].append(mean_squared_error(y_test, y_pred))
+        metrics_score[model_name]["RMSE"].append(np.sqrt(mean_squared_error(y_test, y_pred)))
+        metrics_score[model_name]["R2 Score"].append(r2_score(y_test, y_pred))
+    
+    if tuning:
+        return np.mean(metrics_score[model_name]["MSE"])
+    
+    model = LinearRegression()
+    X, scaler_X = standard_scale(X)
+    y, scaler_y = standard_scale(y)
+    
+    model.fit(X, y)
+    
     predictions = predict_model.make_prediction(
-        model, X_test, y_test, y_test_index, y_test_columns
+        model, X, y, y_index, y_columns
     )
-    metrics = predict_model.calculate_metrics("LinearRegression", y_test, predictions)
     predictions = pd.DataFrame(
         scaler_y.inverse_transform(predictions),
-        index=y_test_index,
-        columns=[f"{col}_pred" for col in y_test_columns],
+        index=y_index,
+        columns=[f"{col}_pred" for col in y_columns],
     )
 
-    return model, metrics, predictions
+    return model, metrics_score, predictions
 
 
-def train_ridge_cv(X_train, y_train, X_test, y_test, params=None):
-    y_test_index, y_test_columns = y_test.index, y_test.columns
-    X_train, X_test, scaler_X = standard_scale(X_train, X_test)
-    y_train, y_test, scaler_y = standard_scale(y_train, y_test)
-
+def train_ridge_cv(X, y, params=None, tuning=False):
+    y_index, y_columns = y.index, y.columns
+    model_name = "RidgeCV"
+    
+    tscv = TimeSeriesSplit(n_splits=5)
     model = RidgeCV(alphas=params.get("alphas", [1.0])) if params else RidgeCV()
-    model.fit(X_train, y_train)
+    metrics_score = {model_name:
+        {
+            "MAE": [],
+            "MSE": [],
+            "RMSE": [],
+            "R2 Score": [],
+        }}
 
+    for train_index, test_index in tscv.split(X):
+        X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+        
+        X_train, X_test, scaler_X = standard_scale(X_train, X_test)
+        y_train, y_test, scaler_y = standard_scale(y_train, y_test)
+
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        
+        metrics_score[model_name]["MAE"].append(mean_absolute_error(y_test, y_pred))
+        metrics_score[model_name]["MSE"].append(mean_squared_error(y_test, y_pred))
+        metrics_score[model_name]["RMSE"].append(np.sqrt(mean_squared_error(y_test, y_pred)))
+        metrics_score[model_name]["R2 Score"].append(r2_score(y_test, y_pred))
+    
+    if tuning:
+        return np.mean(metrics_score[model_name]["MSE"])
+    
+    model = RidgeCV(alphas=params.get("alphas", [1.0])) if params else RidgeCV()
+    X, scaler_X = standard_scale(X)
+    y, scaler_y = standard_scale(y)
+    
+    model.fit(X, y)
+    
     predictions = predict_model.make_prediction(
-        model, X_test, y_test, y_test_index, y_test_columns
+        model, X, y, y_index, y_columns
     )
-    metrics = predict_model.calculate_metrics("RidgeCV", y_test, predictions)
     predictions = pd.DataFrame(
         scaler_y.inverse_transform(predictions),
-        index=y_test_index,
-        columns=[f"{col}_pred" for col in y_test_columns],
+        index=y_index,
+        columns=[f"{col}_pred" for col in y_columns],
     )
 
-    return model, metrics, predictions
+    return model, metrics_score, predictions
 
 
-def train_lasso_cv(X_train, y_train, X_test, y_test, params):
-    y_test_index, y_test_columns = y_test.index, y_test.columns
-    X_train, X_test, scaler_X = standard_scale(X_train, X_test)
-    y_train, y_test, scaler_y = standard_scale(y_train, y_test)
+def train_lasso_cv(X, y, params=None, tuning=False):
+    y_index, y_columns = y.index, y.columns
+    model_name = "MultiTaskLassoCV"
+    
+    tscv = TimeSeriesSplit(n_splits=5)
+    model = MultiTaskLassoCV(alphas=params.get("alphas", [1.0])) if params else MultiTaskLassoCV()
+    metrics_score = {model_name:
+        {
+            "MAE": [],
+            "MSE": [],
+            "RMSE": [],
+            "R2 Score": [],
+        }}
 
-    model = (
-        MultiTaskLassoCV(alphas=params.get("alphas", [1.0]))
-        if params
-        else MultiTaskLassoCV()
-    )
-    model.fit(X_train, y_train)
+    for train_index, test_index in tscv.split(X):
+        X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+        
+        X_train, X_test, scaler_X = standard_scale(X_train, X_test)
+        y_train, y_test, scaler_y = standard_scale(y_train, y_test)
 
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        
+        metrics_score[model_name]["MAE"].append(mean_absolute_error(y_test, y_pred))
+        metrics_score[model_name]["MSE"].append(mean_squared_error(y_test, y_pred))
+        metrics_score[model_name]["RMSE"].append(np.sqrt(mean_squared_error(y_test, y_pred)))
+        metrics_score[model_name]["R2 Score"].append(r2_score(y_test, y_pred))
+    
+    if tuning:
+        return np.mean(metrics_score[model_name]["MSE"])
+    
+    model = MultiTaskLassoCV(alphas=params.get("alphas", [1.0])) if params else MultiTaskLassoCV()
+    X, scaler_X = standard_scale(X)
+    y, scaler_y = standard_scale(y)
+    
+    model.fit(X, y)
+    
     predictions = predict_model.make_prediction(
-        model, X_test, y_test, y_test_index, y_test_columns
+        model, X, y, y_index, y_columns
     )
-    metrics = predict_model.calculate_metrics("MultiTaskLassoCV", y_test, predictions)
     predictions = pd.DataFrame(
         scaler_y.inverse_transform(predictions),
-        index=y_test_index,
-        columns=[f"{col}_pred" for col in y_test_columns],
+        index=y_index,
+        columns=[f"{col}_pred" for col in y_columns],
     )
 
-    return model, metrics, predictions
+    return model, metrics_score, predictions
 
 
-def train_random_forest(X_train, y_train, X_test, y_test, params=None):
-    y_test_index, y_test_columns = y_test.index, y_test.columns
+def train_random_forest(X, y, params=None, tuning=False):
+    y_index, y_columns = y.index, y.columns
+    model_name = "RandomForest"
+    
+    tscv = TimeSeriesSplit(n_splits=5)
     params = params if params else {}
     params["n_jobs"] = params.get("n_jobs", -1)
     model = RandomForestRegressor(**params)
-    model.fit(X_train, y_train)
 
+    metrics_score = {model_name:
+        {
+            "MAE": [],
+            "MSE": [],
+            "RMSE": [],
+            "R2 Score": [],
+        }}
+
+    for train_index, test_index in tscv.split(X):
+        X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        
+        metrics_score[model_name]["MAE"].append(mean_absolute_error(y_test, y_pred))
+        metrics_score[model_name]["MSE"].append(mean_squared_error(y_test, y_pred))
+        metrics_score[model_name]["RMSE"].append(np.sqrt(mean_squared_error(y_test, y_pred)))
+        metrics_score[model_name]["R2 Score"].append(r2_score(y_test, y_pred))
+    
+    if tuning:
+        return np.mean(metrics_score[model_name]["MSE"])
+    
+    model = RandomForestRegressor(**params)
+    model.fit(X, y)
+    
     predictions = predict_model.make_prediction(
-        model, X_test, y_test, y_test_index, y_test_columns
+        model, X, y, y_index, y_columns
     )
-    metrics = predict_model.calculate_metrics("RandomForest", y_test, predictions)
 
-    return model, metrics, predictions
+    return model, metrics_score, predictions
 
 
-def train_extra_trees(X_train, y_train, X_test, y_test, params=None):
-    y_test_index, y_test_columns = y_test.index, y_test.columns
+def train_extra_trees(X, y, params=None, tuning=False):
+    y_index, y_columns = y.index, y.columns
+    model_name = "ExtraTrees"
+    
+    tscv = TimeSeriesSplit(n_splits=5)
     params = params if params else {}
     params["n_jobs"] = params.get("n_jobs", -1)
     model = ExtraTreesRegressor(**params)
-    model.fit(X_train, y_train)
 
+    metrics_score = {model_name:
+        {
+            "MAE": [],
+            "MSE": [],
+            "RMSE": [],
+            "R2 Score": [],
+        }}
+
+    for train_index, test_index in tscv.split(X):
+        X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        
+        metrics_score[model_name]["MAE"].append(mean_absolute_error(y_test, y_pred))
+        metrics_score[model_name]["MSE"].append(mean_squared_error(y_test, y_pred))
+        metrics_score[model_name]["RMSE"].append(np.sqrt(mean_squared_error(y_test, y_pred)))
+        metrics_score[model_name]["R2 Score"].append(r2_score(y_test, y_pred))
+    
+    if tuning:
+        return np.mean(metrics_score[model_name]["MSE"])
+    
+    model = ExtraTreesRegressor(**params)
+    model.fit(X, y)
+    
     predictions = predict_model.make_prediction(
-        model, X_test, y_test, y_test_index, y_test_columns
+        model, X, y, y_index, y_columns
     )
-    metrics = predict_model.calculate_metrics("ExtraTrees", y_test, predictions)
 
-    return model, metrics, predictions
+    return model, metrics_score, predictions
 
 
-def train_xgboost(X_train, y_train, X_test, y_test, params=None):
-    y_test_index, y_test_columns = y_test.index, y_test.columns
+def train_xgboost(X, y, params=None, tuning=False):
+    y_index, y_columns = y.index, y.columns
+    model_name = "XGBoost"
+    
+    tscv = TimeSeriesSplit(n_splits=5)
     model = XGBRegressor(**params) if params else XGBRegressor()
-    model.fit(X_train, y_train)
 
+    metrics_score = {model_name:
+        {
+            "MAE": [],
+            "MSE": [],
+            "RMSE": [],
+            "R2 Score": [],
+        }}
+
+    for train_index, test_index in tscv.split(X):
+        X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        
+        metrics_score[model_name]["MAE"].append(mean_absolute_error(y_test, y_pred))
+        metrics_score[model_name]["MSE"].append(mean_squared_error(y_test, y_pred))
+        metrics_score[model_name]["RMSE"].append(np.sqrt(mean_squared_error(y_test, y_pred)))
+        metrics_score[model_name]["R2 Score"].append(r2_score(y_test, y_pred))
+    
+    if tuning:
+        return np.mean(metrics_score[model_name]["MSE"])
+    
+    model = XGBRegressor(**params) if params else XGBRegressor()
+    model.fit(X, y)
+    
     predictions = predict_model.make_prediction(
-        model, X_test, y_test, y_test_index, y_test_columns
+        model, X, y, y_index, y_columns
     )
-    metrics = predict_model.calculate_metrics("XGBoost", y_test, predictions)
 
-    return model, metrics, predictions
+    return model, metrics_score, predictions
 
 
-def train_mlp(X_train, y_train, X_test, y_test, params=None):
-    y_test_index, y_test_columns = y_test.index, y_test.columns
-    num_outputs = y_test.shape[1]
-    X_train, X_test, scaler_X = min_max_scale_features(X_train, X_test)
-    y_train, y_test, scaler_y = min_max_scale_features(y_train, y_test)
-
-    if params is None:
+def train_mlp(X, y, params=None, tuning=False):
+    y_index, y_columns = y.index, y.columns
+    model_name = "MLP"
+    
+    tscv = TimeSeriesSplit(n_splits=5)
+    if not params:
         params = {
             "hidden_layer_sizes": (100,),
             "activation": "relu",
-            "solver": "adam",
-            "batch_size": "auto",
-            "max_iter": 200,
+            "batch_size": 32,
+            "dropout_rate": 0.5,   
+            "optimizer": "adam",           
+            "epochs": 200
         }
-
+        
+    num_outputs = y.shape[1]
     model = Sequential()
     for layer_size in params["hidden_layer_sizes"]:
         model.add(Dense(layer_size, activation=params["activation"]))
@@ -248,85 +406,143 @@ def train_mlp(X_train, y_train, X_test, y_test, params=None):
     model.add(Dense(num_outputs))
     model.compile(optimizer=params["optimizer"], loss="mean_squared_error")
 
-    model.fit(
-        X_train,
-        y_train,
-        batch_size=params.get("batch_size", 32),
-        epochs=params["epochs"],
-        verbose=0,
-    )
+    metrics_score = {model_name:
+        {
+            "MAE": [],
+            "MSE": [],
+            "RMSE": [],
+            "R2 Score": [],
+        }}
 
+    for train_index, test_index in tscv.split(X):
+        X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+        
+        X_train, X_test, scaler_X = min_max_scale_features(X_train, X_test)
+        y_train, y_test, scaler_y = min_max_scale_features(y_train, y_test)
+
+        model.fit(X_train, y_train, batch_size=params.get("batch_size"), epochs=params["epochs"], verbose=0)
+        y_pred = model.predict(X_test)
+        
+        metrics_score[model_name]["MAE"].append(mean_absolute_error(y_test, y_pred))
+        metrics_score[model_name]["MSE"].append(mean_squared_error(y_test, y_pred))
+        metrics_score[model_name]["RMSE"].append(np.sqrt(mean_squared_error(y_test, y_pred)))
+        metrics_score[model_name]["R2 Score"].append(r2_score(y_test, y_pred))
+    
+    if tuning:
+        return np.mean(metrics_score[model_name]["MSE"])
+    
+    model = Sequential()
+    for layer_size in params["hidden_layer_sizes"]:
+        model.add(Dense(layer_size, activation=params["activation"]))
+        model.add(Dropout(params["dropout_rate"]))
+    model.add(Dense(num_outputs))
+    model.compile(optimizer=params["optimizer"], loss="mean_squared_error")
+    
+    X, scaler_X = min_max_scale_features(X)
+    y, scaler_y = min_max_scale_features(y)
+    
+    model.fit(X, y, batch_size=params.get("batch_size"), epochs=params["epochs"], verbose=0)
+    
     predictions = predict_model.make_prediction(
-        model, X_test, y_test, y_test_index, y_test_columns
+        model, X, y, y_index, y_columns
     )
-    metrics = predict_model.calculate_metrics("MLP", y_test, predictions)
     predictions = pd.DataFrame(
         scaler_y.inverse_transform(predictions),
-        index=y_test_index,
-        columns=[f"{col}_pred" for col in y_test_columns],
+        index=y_index,
+        columns=[f"{col}_pred" for col in y_columns],
     )
 
-    return model, metrics, predictions
+    return model, metrics_score, predictions
 
 
-def train_knn(X_train, y_train, X_test, y_test, params=None):
-    y_test_index, y_test_columns = y_test.index, y_test.columns
+def train_knn(X, y, params=None, tuning=False):
+    y_index, y_columns = y.index, y.columns
+    model_name = "KNN"
+    
+    tscv = TimeSeriesSplit(n_splits=5)
     params = params if params else {}
     params["n_jobs"] = params.get("n_jobs", -1)
     model = KNeighborsRegressor(**params)
-    model.fit(X_train, y_train)
 
-    predictions = predict_model.make_prediction(
-        model, X_test, y_test, y_test_index, y_test_columns
-    )
-    metrics = predict_model.calculate_metrics("KNN", y_test, predictions)
-
-    return model, metrics, predictions
-
-
-def train_decision_tree(X_train, y_train, X_test, y_test, params=None):
-    y_test_index, y_test_columns = y_test.index, y_test.columns
-    model = DecisionTreeRegressor(**params) if params else DecisionTreeRegressor()
-    model.fit(X_train, y_train)
-
-    predictions = predict_model.make_prediction(
-        model, X_test, y_test, y_test_index, y_test_columns
-    )
-    metrics = predict_model.calculate_metrics("DecisionTree", y_test, predictions)
-
-    return model, metrics, predictions
-
-
-def time_series_cross_validation(model_name, X, y, params, n_splits=5):
-    """
-    Perform time series cross-validation on a given model.
-
-    :param model_name: Name of the model for cross-validation.
-    :param X: Input features for cross-validation.
-    :param y: Output features for cross-validation.
-    :param n_splits: Number of splits for cross-validation.
-    :return: Dictionary containing performance metrics for each split.
-    """
-    tscv = TimeSeriesSplit(n_splits=n_splits)
-    mse_scores = []
+    metrics_score = {model_name:
+        {
+            "MAE": [],
+            "MSE": [],
+            "RMSE": [],
+            "R2 Score": [],
+        }}
 
     for train_index, test_index in tscv.split(X):
         X_train, X_test = X.iloc[train_index], X.iloc[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
 
-        trained_model, metrics, _ = train_models[model_name](
-            X_train, y_train, X_test, y_test, params
-        )
-        mse_scores.append(metrics[model_name]["MSE"])
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        
+        metrics_score[model_name]["MAE"].append(mean_absolute_error(y_test, y_pred))
+        metrics_score[model_name]["MSE"].append(mean_squared_error(y_test, y_pred))
+        metrics_score[model_name]["RMSE"].append(np.sqrt(mean_squared_error(y_test, y_pred)))
+        metrics_score[model_name]["R2 Score"].append(r2_score(y_test, y_pred))
+    
+    if tuning:
+        return np.mean(metrics_score[model_name]["MSE"])
+    
+    model = KNeighborsRegressor(**params)
+    model.fit(X, y)
+    
+    predictions = predict_model.make_prediction(
+        model, X, y, y_index, y_columns
+    )
 
-    return np.mean(mse_scores)
+    return model, metrics_score, predictions
 
 
-def objective_function(params, model_name, X_train, y_train):
+def train_decision_tree(X, y, params=None, tuning=False):
+    y_index, y_columns = y.index, y.columns
+    model_name = "DecisionTree"
+    
+    tscv = TimeSeriesSplit(n_splits=5)
+    model = DecisionTreeRegressor(**params) if params else DecisionTreeRegressor()
+
+    metrics_score = {model_name:
+        {
+            "MAE": [],
+            "MSE": [],
+            "RMSE": [],
+            "R2 Score": [],
+        }}
+
+    for train_index, test_index in tscv.split(X):
+        X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        
+        metrics_score[model_name]["MAE"].append(mean_absolute_error(y_test, y_pred))
+        metrics_score[model_name]["MSE"].append(mean_squared_error(y_test, y_pred))
+        metrics_score[model_name]["RMSE"].append(np.sqrt(mean_squared_error(y_test, y_pred)))
+        metrics_score[model_name]["R2 Score"].append(r2_score(y_test, y_pred))
+    
+    if tuning:
+        return np.mean(metrics_score[model_name]["MSE"])
+    
+    model = DecisionTreeRegressor(**params) if params else DecisionTreeRegressor()
+    model.fit(X, y)
+    
+    predictions = predict_model.make_prediction(
+        model, X, y, y_index, y_columns
+    )
+
+    return model, metrics_score, predictions
+
+
+def objective_function(params, model_name, X, y, building_id):
     """
     Objective function for Hyperopt to minimize. Returns the cross-validated score of the given model and parameters.
     """
-    score = time_series_cross_validation(model_name, X_train, y_train, params)
+    score = train_models[model_name](X, y, building_id, params, tuning=True)
     return {"loss": score, "status": STATUS_OK}
 
 

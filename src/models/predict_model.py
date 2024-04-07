@@ -106,7 +106,10 @@ def save_models_results(building_id, metrics):
     else:
         df = pd.DataFrame()
 
-    for model_name, value in metrics.items():
+    metrics_mean = {model: {metric: np.mean(values) for metric, values in metrics.items()} 
+                    for model, metrics in metrics.items()}
+    
+    for model_name, value in metrics_mean.items():
         if model_name in df.index:
             df.loc[model_name] = value
         else:

@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import math
 import scipy
+from src.features.target_transformations import AutoStationaryTransformer
 
 INTERIM_DATA_PATH = "data/interim/"
 PROCESSED_DATA_PATH = "data/processed/"
@@ -142,14 +143,73 @@ def create_lags_features(dataset):
     :return: DataFrame with lagged features added.
     """
     for col in dataset.columns:
-        if ("Air_temperature" in col) or ("Relative_humidity" in col):
+        if (col.endswith("Air_temperature")) or (col.endswith("Relative_humidity")):
             col_dict = {
                 f"{col}_{l}": dataset[col].shift(l).astype("float32") for l in [1, 2]
             }
             dataset = dataset.assign(**col_dict)
-            added_features1 = list(col_dict.keys())
-            print(added_features1)
+            added_features = list(col_dict.keys())
+            print(f"Added Lag Features {added_features}")
+            
     return dataset
+
+
+def add_rolling_features(dataset):
+    """
+    Adds rolling window features to the DataFrame without checking for multiple time series IDs.
+
+    :param dataset: DataFrame containing the data.
+    return: Updated DataFrame with rolling window features added.
+    """
+    rolls = [12, 48]
+    agg_funcs = ["mean", "std"]
+    
+    for col in dataset.columns:
+        if (col.endswith("Air_temperature")) or (col.endswith("Relative_humidity")):
+            rolling_df = pd.concat(
+                [
+                    dataset[col]
+                    .shift(1)
+                    .rolling(window=l)
+                    .agg({f"{col}_rolling_{l}_{agg}": agg for agg in agg_funcs})
+                    for l in rolls
+                ],
+                axis=1,
+            )
+            
+            dataset = dataset.assign(**rolling_df.to_dict("list"))
+            added_features = rolling_df.columns.tolist()
+            print(f"Added Rolling Features {added_features}")
+
+    return dataset
+
+
+def make_series_stationary(df, columns, seasonal_period=48*7, freq="30min"):
+    """
+    Applies AutoStationaryTransformer to specified columns of a DataFrame to make the series stationary.
+
+    Parameters:
+    - df : pd.DataFrame - The DataFrame containing the time series data.
+    - columns : list - List of column names to be made stationary.
+    - seasonal_period : int - Seasonal period to be considered by the AutoStationaryTransformer.
+    - freq : str - Frequency of the time series data, passed to the transformer.
+
+    Returns:
+    - pd.DataFrame - DataFrame with the specified columns transformed to be stationary.
+    - dict - Dictionary of transformers for each column.
+    """
+    transformers = {}
+    for col in columns:
+        auto_stationary = AutoStationaryTransformer(seasonal_period=seasonal_period)
+        y = df[col]
+        
+        y_stat = auto_stationary.fit_transform(y, freq=freq)
+        df.loc[:, col] = y_stat.values
+        
+        # Store the transformer
+        transformers[col] = auto_stationary
+
+    return df, transformers
 
 
 def fill_missing_values(dataset, method="bfill"):
@@ -162,6 +222,22 @@ def fill_missing_values(dataset, method="bfill"):
     """
     dataset = dataset.fillna(method=method)
     return dataset
+
+
+def add_time_features(data):
+    """
+    Adds time-related features to the DataFrame.
+
+    :param data: DataFrame with DateTimeIndex.
+    :return: DataFrame with added features.
+    """
+    data['day'] = data.index.day
+    data['month'] = data.index.month
+    data['year'] = data.index.year
+    data['hour'] = data.index.hour
+    data['weekday'] = data.index.weekday
+
+    return data
 
 
 def save_processed_data(data, building_id):
