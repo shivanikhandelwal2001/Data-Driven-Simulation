@@ -169,3 +169,19 @@ def feature_importance_plot(model_name, feat_df, col, building_id):
     save_figure(
         fig, building_id, "feature_importance_plots", f"{model_name}_{col}_importance"
     )
+
+
+# Plot LSTM History
+def plot_training_history(history, building_id):
+    fig, ax = plt.subplots(figsize=(12, 6))
+    ax.plot(history.history['loss'], label='Training Loss', color='tab:blue')
+    ax.plot(history.history['val_loss'], label='Validation Loss', color='tab:orange')
+    
+    ax.set_title(f'Training and Validation Loss for Building {building_id}')
+    ax.set_xlabel('Epoch')
+    ax.set_ylabel('Loss')
+    ax.legend()
+    
+    save_figure(
+        fig, building_id, "training_history_plots", f"training_validation_loss_{building_id}"
+    )

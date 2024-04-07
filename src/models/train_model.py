@@ -17,6 +17,7 @@ from sklearn.metrics import mean_squared_error
 import numpy as np
 from hyperopt import hp, fmin, tpe, Trials, STATUS_OK
 from hyperopt.pyll.base import scope
+from src.visualization import visualize
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 # tf.config.set_visible_devices([], 'GPU')
@@ -631,8 +632,197 @@ def define_hyperparameters_space(model_name):
             "min_samples_split": scope.int(hp.quniform("min_samples_split", 2, 20, 1)),
             "min_samples_leaf": scope.int(hp.quniform("min_samples_leaf", 1, 20, 1)),
         }
+        
+    elif model_name == "LSTM":
+        space = {
+            "lstm_units": scope.int(hp.quniform("lstm_units", 50, 300, 10)),
+            "dropout_rate": hp.uniform("dropout_rate", 0.1, 0.5),
+            "optimizer": hp.choice("optimizer", ["adam", "rmsprop"]),
+            "batch_size": scope.int(hp.quniform("batch_size", 16, 128, 16)),
+            "epochs": scope.int(hp.quniform("epochs", 50, 200, 20)),
+        }
+        
+    elif model_name == "EnhancedLSTM":
+        space = {
+            "lstm_units": scope.int(hp.quniform("lstm_units", 50, 300, 10)),
+            "dropout_rate": hp.uniform("dropout_rate", 0.1, 0.5),
+            "batch_size": scope.int(hp.quniform("batch_size", 16, 128, 16)),
+            "epochs": scope.int(hp.quniform("epochs", 50, 200, 20)),
+            "learning_rate": hp.loguniform("learning_rate", np.log(0.0001), np.log(0.01)),
+        }
 
     return space
+
+
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, LSTM, Dropout, Bidirectional, Conv1D, Permute, Multiply, Lambda, TimeDistributed, Flatten
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import EarlyStopping
+import numpy as np
+import pandas as pd
+import tensorflow.keras.backend as K
+
+
+def train_lstm_model(X, y, params=None, tuning=False):
+    """
+    Trains an LSTM model on the provided features and target.
+    """
+    y_index, y_columns = y.index, y.columns
+    model_name = "LSTM"
+    
+    tscv = TimeSeriesSplit(n_splits=5)
+    
+    if not params:
+        params = {
+            'lstm_units': 64,
+            'dropout_rate': 0.2,
+            'optimizer': 'adam',
+            'epochs': 50,
+            'batch_size': 32
+        }
+
+    metrics_score = {"LSTM": {"MAE": [], "MSE": [], "RMSE": [], "R2 Score": []}}
+
+    for train_index, test_index in tscv.split(X):
+        X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+
+        X_train, X_test, scaler_X = min_max_scale_features(X_train, X_test)
+        y_train, y_test, scaler_y = min_max_scale_features(y_train, y_test)
+
+        X_train = X_train.reshape((X_train.shape[0], 1, X_train.shape[1]))
+        X_test = X_test.reshape((X_test.shape[0], 1, X_test.shape[1]))
+
+        model = Sequential([
+            LSTM(params['lstm_units'], input_shape=(X_train.shape[1], X_train.shape[2])),
+            Dropout(params['dropout_rate']),
+            Dense(y_train.shape[1])
+        ])
+        model.compile(optimizer=params['optimizer'], loss='mean_squared_error')
+
+        model.fit(X_train, y_train, epochs=params['epochs'], batch_size=params['batch_size'], verbose=0)
+        y_pred = model.predict(X_test)
+        
+        metrics_score[model_name]["MAE"].append(mean_absolute_error(y_test, y_pred))
+        metrics_score[model_name]["MSE"].append(mean_squared_error(y_test, y_pred))
+        metrics_score[model_name]["RMSE"].append(np.sqrt(mean_squared_error(y_test, y_pred)))
+        metrics_score[model_name]["R2 Score"].append(r2_score(y_test, y_pred))
+
+    if tuning:
+        return np.mean(metrics_score[model_name]["MSE"])
+
+    X, scaler_X = min_max_scale_features(X)
+    y, scaler_y = min_max_scale_features(y)
+
+    X = X.reshape((X.shape[0], 1, X.shape[1]))
+
+    model = Sequential([
+        LSTM(params['lstm_units'], input_shape=(X.shape[1], X.shape[2])),
+        Dropout(params['dropout_rate']),
+        Dense(y.shape[1])
+    ])
+    model.compile(optimizer=params['optimizer'], loss='mean_squared_error')
+    model.fit(X, y, epochs=params['epochs'], batch_size=params['batch_size'], verbose=0)
+
+    predictions = model.predict(X)
+    predictions = pd.DataFrame(
+        scaler_y.inverse_transform(predictions),
+        index=y_index,
+        columns=[f"{col}_pred" for col in y_columns]
+    )
+
+    return model, metrics_score, predictions
+
+
+def attention_mechanism(inputs, input_dim):
+    a = Dense(input_dim, activation='softmax')(inputs)
+    a_probs = Permute((2, 1), name='attention_vec')(a)
+    output_attention_mul = Multiply()([inputs, a_probs])
+    
+    return Flatten()(output_attention_mul)
+
+
+def train_enhanced_lstm_model(X, y, params=None, tuning=False):
+    """
+    Trains an enhanced LSTM model with Bi-directional, CNN, and Attention layers on the provided features and target using time series cross-validation.
+    Then, trains the model on the entire dataset.
+    """
+    y_index, y_columns = y.index, y.columns
+    model_name = "EnhancedLSTM"
+
+    if not params:
+        params = {
+            'lstm_units': 64,
+            'dropout_rate': 0.3,
+            'learning_rate': 0.001,
+            'epochs': 100,
+            'batch_size': 64
+        }
+        
+    tscv = TimeSeriesSplit(n_splits=5)
+    metrics_score = {model_name: {"MAE": [], "MSE": [], "RMSE": [], "R2 Score": []}}
+
+    for train_index, test_index in tscv.split(X):
+        X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+
+        X_train, X_test, scaler_X = min_max_scale_features(X_train, X_test)
+        y_train, y_test, scaler_y = min_max_scale_features(y_train, y_test)
+
+        X_train = X_train.reshape((X_train.shape[0], 1, X_train.shape[1]))
+        X_test = X_test.reshape((X_test.shape[0], 1, X_test.shape[1]))
+        
+        model = Sequential([
+            Conv1D(filters=64, kernel_size=3, strides=1, padding='same', activation='relu', input_shape=(X_train.shape[1], X_train.shape[2])),
+            Dropout(params['dropout_rate']),
+            Bidirectional(LSTM(params['lstm_units'], return_sequences=True)),
+            Bidirectional(LSTM(params['lstm_units'], return_sequences=True)),
+            Permute((2, 1)), 
+            Dense(X_train.shape[1], activation='softmax'),
+            Permute((2, 1)),
+            Flatten(),
+            Dense(y_train.shape[1])
+        ])
+        model.compile(optimizer=Adam(learning_rate=params['learning_rate']), loss='mean_squared_error')
+
+        model.fit(X_train, y_train, epochs=params['epochs'], batch_size=params['batch_size'], verbose=0)
+        y_pred = model.predict(X_test)
+        
+        metrics_score[model_name]["MAE"].append(mean_absolute_error(y_test, y_pred))
+        metrics_score[model_name]["MSE"].append(mean_squared_error(y_test, y_pred))
+        metrics_score[model_name]["RMSE"].append(np.sqrt(mean_squared_error(y_test, y_pred)))
+        metrics_score[model_name]["R2 Score"].append(r2_score(y_test, y_pred))
+    
+    if tuning:
+        return np.mean(metrics_score[model_name]["MSE"])
+    
+    X, scaler_X = min_max_scale_features(X)
+    y, scaler_y = min_max_scale_features(y)
+    
+    X = X.reshape((X.shape[0], 1, X.shape[1]))
+    
+    model = Sequential([
+            Conv1D(filters=64, kernel_size=3, strides=1, padding='same', activation='relu', input_shape=(X.shape[1], X.shape[2])),
+            Dropout(params['dropout_rate']),
+            Bidirectional(LSTM(params['lstm_units'], return_sequences=True)),
+            Bidirectional(LSTM(params['lstm_units'], return_sequences=True)),
+            Permute((2, 1)), 
+            Dense(X.shape[1], activation='softmax'),
+            Permute((2, 1)),
+            Flatten(),
+            Dense(y.shape[1])
+        ])
+    model.compile(optimizer=Adam(learning_rate=params['learning_rate']), loss='mean_squared_error')
+    model.fit(X, y, epochs=params['epochs'], batch_size=params['batch_size'], verbose=0)
+    
+    predictions = model.predict(X)
+    predictions = pd.DataFrame(
+        scaler_y.inverse_transform(predictions),
+        index=y_index,
+        columns=[f"{col}_pred" for col in y_columns]
+    )
+
+    return model, metrics_score, predictions
 
 
 train_models = {
@@ -645,4 +835,6 @@ train_models = {
     "MLP": train_mlp,
     "KNN": train_knn,
     "DecisionTree": train_decision_tree,
+    "LSTM": train_lstm_model,
+    "EnhancedLSTM": train_enhanced_lstm_model
 }

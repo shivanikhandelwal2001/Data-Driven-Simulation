@@ -25,7 +25,10 @@ model_names = [
     "MLP",
     "KNN",
     "DecisionTree",
+    "LSTM",
+    "EnhancedLSTM"
 ]
+model_names = ["EnhancedLSTM"]
 
 SAVE_MODELS = "models/"
 
@@ -114,6 +117,10 @@ def hyperparameter_tuning(building_id, model_name, X, y):
         if model_name == "KNN":
             best_params["weights"] = (
                 "uniform" if best_params["weights"] == 0 else "distance"
+            )
+        elif model_name == "LSTM":
+            best_params["optimizer"] = (
+                "adam" if best_params["optimizer"] == 0 else "rmsprop"
             )
         elif model_name == "MLP":
             mlp_space = {
@@ -257,5 +264,5 @@ features = [
 # Process all buildings
 Parallel(n_jobs=-1)(
     delayed(process_all_buildings)(building_id, features, process=False)
-    for building_id in building_ids[:1]
+    for building_id in building_ids[14:15]
 )
