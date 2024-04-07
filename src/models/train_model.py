@@ -114,7 +114,6 @@ def train_linear_regression(X, y, params=None, tuning=False):
     model_name = "LinearRegression"
     
     tscv = TimeSeriesSplit(n_splits=5)
-    model = LinearRegression()
     metrics_score = {model_name:
         {
             "MAE": [],
@@ -130,6 +129,7 @@ def train_linear_regression(X, y, params=None, tuning=False):
         X_train, X_test, scaler_X = standard_scale(X_train, X_test)
         y_train, y_test, scaler_y = standard_scale(y_train, y_test)
 
+        model = LinearRegression()
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
         
@@ -164,7 +164,6 @@ def train_ridge_cv(X, y, params=None, tuning=False):
     model_name = "RidgeCV"
     
     tscv = TimeSeriesSplit(n_splits=5)
-    model = RidgeCV(alphas=params.get("alphas", [1.0])) if params else RidgeCV()
     metrics_score = {model_name:
         {
             "MAE": [],
@@ -180,6 +179,7 @@ def train_ridge_cv(X, y, params=None, tuning=False):
         X_train, X_test, scaler_X = standard_scale(X_train, X_test)
         y_train, y_test, scaler_y = standard_scale(y_train, y_test)
 
+        model = RidgeCV(alphas=params.get("alphas", [1.0])) if params else RidgeCV()
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
         
@@ -214,7 +214,6 @@ def train_lasso_cv(X, y, params=None, tuning=False):
     model_name = "MultiTaskLassoCV"
     
     tscv = TimeSeriesSplit(n_splits=5)
-    model = MultiTaskLassoCV(alphas=params.get("alphas", [1.0])) if params else MultiTaskLassoCV()
     metrics_score = {model_name:
         {
             "MAE": [],
@@ -230,6 +229,7 @@ def train_lasso_cv(X, y, params=None, tuning=False):
         X_train, X_test, scaler_X = standard_scale(X_train, X_test)
         y_train, y_test, scaler_y = standard_scale(y_train, y_test)
 
+        model = MultiTaskLassoCV(alphas=params.get("alphas", [1.0])) if params else MultiTaskLassoCV()
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
         
@@ -266,7 +266,6 @@ def train_random_forest(X, y, params=None, tuning=False):
     tscv = TimeSeriesSplit(n_splits=5)
     params = params if params else {}
     params["n_jobs"] = params.get("n_jobs", -1)
-    model = RandomForestRegressor(**params)
 
     metrics_score = {model_name:
         {
@@ -280,6 +279,7 @@ def train_random_forest(X, y, params=None, tuning=False):
         X_train, X_test = X.iloc[train_index], X.iloc[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
 
+        model = RandomForestRegressor(**params)
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
         
@@ -308,7 +308,6 @@ def train_extra_trees(X, y, params=None, tuning=False):
     tscv = TimeSeriesSplit(n_splits=5)
     params = params if params else {}
     params["n_jobs"] = params.get("n_jobs", -1)
-    model = ExtraTreesRegressor(**params)
 
     metrics_score = {model_name:
         {
@@ -322,6 +321,7 @@ def train_extra_trees(X, y, params=None, tuning=False):
         X_train, X_test = X.iloc[train_index], X.iloc[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
 
+        model = ExtraTreesRegressor(**params)
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
         
@@ -348,8 +348,6 @@ def train_xgboost(X, y, params=None, tuning=False):
     model_name = "XGBoost"
     
     tscv = TimeSeriesSplit(n_splits=5)
-    model = XGBRegressor(**params) if params else XGBRegressor()
-
     metrics_score = {model_name:
         {
             "MAE": [],
@@ -362,6 +360,7 @@ def train_xgboost(X, y, params=None, tuning=False):
         X_train, X_test = X.iloc[train_index], X.iloc[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
 
+        model = XGBRegressor(**params) if params else XGBRegressor()
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
         
@@ -399,13 +398,6 @@ def train_mlp(X, y, params=None, tuning=False):
         }
         
     num_outputs = y.shape[1]
-    model = Sequential()
-    for layer_size in params["hidden_layer_sizes"]:
-        model.add(Dense(layer_size, activation=params["activation"]))
-        model.add(Dropout(params["dropout_rate"]))
-    model.add(Dense(num_outputs))
-    model.compile(optimizer=params["optimizer"], loss="mean_squared_error")
-
     metrics_score = {model_name:
         {
             "MAE": [],
@@ -420,6 +412,13 @@ def train_mlp(X, y, params=None, tuning=False):
         
         X_train, X_test, scaler_X = min_max_scale_features(X_train, X_test)
         y_train, y_test, scaler_y = min_max_scale_features(y_train, y_test)
+        
+        model = Sequential()
+        for layer_size in params["hidden_layer_sizes"]:
+            model.add(Dense(layer_size, activation=params["activation"]))
+            model.add(Dropout(params["dropout_rate"]))
+        model.add(Dense(num_outputs))
+        model.compile(optimizer=params["optimizer"], loss="mean_squared_error")
 
         model.fit(X_train, y_train, batch_size=params.get("batch_size"), epochs=params["epochs"], verbose=0)
         y_pred = model.predict(X_test)
@@ -463,7 +462,6 @@ def train_knn(X, y, params=None, tuning=False):
     tscv = TimeSeriesSplit(n_splits=5)
     params = params if params else {}
     params["n_jobs"] = params.get("n_jobs", -1)
-    model = KNeighborsRegressor(**params)
 
     metrics_score = {model_name:
         {
@@ -477,6 +475,7 @@ def train_knn(X, y, params=None, tuning=False):
         X_train, X_test = X.iloc[train_index], X.iloc[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
 
+        model = KNeighborsRegressor(**params)
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
         
@@ -503,8 +502,6 @@ def train_decision_tree(X, y, params=None, tuning=False):
     model_name = "DecisionTree"
     
     tscv = TimeSeriesSplit(n_splits=5)
-    model = DecisionTreeRegressor(**params) if params else DecisionTreeRegressor()
-
     metrics_score = {model_name:
         {
             "MAE": [],
@@ -517,6 +514,7 @@ def train_decision_tree(X, y, params=None, tuning=False):
         X_train, X_test = X.iloc[train_index], X.iloc[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
 
+        model = DecisionTreeRegressor(**params) if params else DecisionTreeRegressor()
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
         
