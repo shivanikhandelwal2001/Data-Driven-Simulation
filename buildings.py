@@ -28,7 +28,6 @@ model_names = [
     "LSTM",
     "EnhancedLSTM"
 ]
-model_names = ["EnhancedLSTM"]
 
 SAVE_MODELS = "models/"
 
@@ -264,5 +263,5 @@ features = [
 # Process all buildings
 Parallel(n_jobs=-1)(
     delayed(process_all_buildings)(building_id, features, process=False)
-    for building_id in building_ids[14:15]
+    for building_id in building_ids[:1]
 )

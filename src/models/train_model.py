@@ -19,6 +19,7 @@ from hyperopt import hp, fmin, tpe, Trials, STATUS_OK
 from hyperopt.pyll.base import scope
 from src.visualization import visualize
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from joblib import dump
 
 # tf.config.set_visible_devices([], 'GPU')
 
@@ -112,6 +113,7 @@ def min_max_scale_features(train, test=None):
 
 def train_linear_regression(X, y, params=None, tuning=False):
     y_index, y_columns = y.index, y.columns
+    X_columns = X.columns
     model_name = "LinearRegression"
     
     tscv = TimeSeriesSplit(n_splits=5)
@@ -148,6 +150,9 @@ def train_linear_regression(X, y, params=None, tuning=False):
     
     model.fit(X, y)
     
+    print("Feature names:", X_columns.tolist())
+    print("Target column names:", y_columns.tolist())
+
     predictions = predict_model.make_prediction(
         model, X, y, y_index, y_columns
     )
@@ -156,6 +161,12 @@ def train_linear_regression(X, y, params=None, tuning=False):
         index=y_index,
         columns=[f"{col}_pred" for col in y_columns],
     )
+    
+    dump(X_columns.tolist(), 'models/feature_order/Building01_LinearRegression_Features.joblib')
+    dump(y_columns.tolist(), 'models/feature_order/Building01_LinearRegression_Targets.joblib')
+    
+    dump(scaler_X, 'models/scalers/Building01_LinearRegression_Scaler_X.joblib')
+    dump(scaler_y, 'models/scalers/Building01_LinearRegression_Scaler_y.joblib')
 
     return model, metrics_score, predictions
 
@@ -537,11 +548,11 @@ def train_decision_tree(X, y, params=None, tuning=False):
     return model, metrics_score, predictions
 
 
-def objective_function(params, model_name, X, y, building_id):
+def objective_function(params, model_name, X, y):
     """
     Objective function for Hyperopt to minimize. Returns the cross-validated score of the given model and parameters.
     """
-    score = train_models[model_name](X, y, building_id, params, tuning=True)
+    score = train_models[model_name](X, y, params, tuning=True)
     return {"loss": score, "status": STATUS_OK}
 
 
