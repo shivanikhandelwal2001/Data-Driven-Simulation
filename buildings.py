@@ -262,6 +262,6 @@ features = [
 
 # Process all buildings
 Parallel(n_jobs=-1)(
-    delayed(process_all_buildings)(building_id, features, process=False)
+    delayed(process_all_buildings)(building_id, features, process=True)
     for building_id in building_ids[:1]
 )

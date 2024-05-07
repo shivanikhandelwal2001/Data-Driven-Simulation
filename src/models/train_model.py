@@ -464,6 +464,9 @@ def train_mlp(X, y, params=None, tuning=False):
         columns=[f"{col}_pred" for col in y_columns],
     )
 
+    dump(scaler_X, 'models/scalers/Building01_MLP_Scaler_X.joblib')
+    dump(scaler_y, 'models/scalers/Building01_MLP_Scaler_y.joblib')
+    
     return model, metrics_score, predictions
 
 
