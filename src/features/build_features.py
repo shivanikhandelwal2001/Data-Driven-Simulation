@@ -233,7 +233,7 @@ def add_time_features(data):
     """
     data['day'] = data.index.day
     data['month'] = data.index.month
-    data['year'] = data.index.year
+    # data['year'] = data.index.year
     data['hour'] = data.index.hour
     data['weekday'] = data.index.weekday
 
