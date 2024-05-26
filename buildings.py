@@ -25,8 +25,6 @@ model_names = [
     "MLP",
     "KNN",
     "DecisionTree",
-    "LSTM",
-    "EnhancedLSTM"
 ]
 
 SAVE_MODELS = "models/"
@@ -263,5 +261,5 @@ features = [
 # Process all buildings
 Parallel(n_jobs=-1)(
     delayed(process_all_buildings)(building_id, features, process=True)
-    for building_id in building_ids[:1]
+    for building_id in ["Building01", "Building08", "Building11"]
 )
