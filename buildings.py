@@ -13,6 +13,7 @@ from hyperopt import hp, fmin, tpe, Trials
 from joblib import Parallel, delayed, load
 import json
 import os
+import pandas as pd
 
 
 model_names = [
@@ -26,6 +27,7 @@ model_names = [
     "KNN",
     "DecisionTree",
 ]
+# model_names = ["LinearRegression"]
 
 SAVE_MODELS = "models/"
 
@@ -180,9 +182,9 @@ def train_and_evaluate_with_hyperopt(building_id, model_name, tuning=False):
 
     params = f"{SAVE_MODELS}models_best_params/{building_id}_best_params.json"
     best_params = {}
-    if os.path.exists(params):
-        with open(params, "r") as json_file:
-            best_params = json.load(json_file).get(model_name, {})
+    # if os.path.exists(params):
+    #     with open(params, "r") as json_file:
+    #         best_params = json.load(json_file).get(model_name, {})
 
     if not best_params:
         print(f"No best parameters found for {model_name}.")
@@ -192,7 +194,9 @@ def train_and_evaluate_with_hyperopt(building_id, model_name, tuning=False):
     )
 
     predict_model.save_models(building_id, model_name, trained_model)
-    predict_model.save_models_results(building_id, metrics)
+    # predict_model.save_models_results(building_id, metrics)
+    metrics1 = pd.DataFrame.from_dict(metrics[model_name])
+    metrics1.to_csv(f"reports/predictions/{building_id}_{model_name}_metrics.csv", index=False)
     predict_model.save_predictions(building_id, model_name, predictions)
 
     for target, metric in metrics[model_name].items():
@@ -215,7 +219,7 @@ def process_all_buildings(building_id, features, process=False):
     if process:
         process_building_data(building_id)
         sub_data = visualize_building_data(building_id, features)
-        preprocess_and_feature_engineer(building_id, sub_data, additional_features=True)
+        preprocess_and_feature_engineer(building_id, sub_data, additional_features=False)
 
     Parallel(n_jobs=-1)(
         delayed(train_and_evaluate_with_hyperopt)(building_id, model, tuning=False)
@@ -261,5 +265,5 @@ features = [
 # Process all buildings
 Parallel(n_jobs=-1)(
     delayed(process_all_buildings)(building_id, features, process=True)
-    for building_id in ["Building01", "Building08", "Building11"]
+    for building_id in building_ids[1:]
 )
