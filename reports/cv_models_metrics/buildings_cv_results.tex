@@ -1,0 +1,35 @@
+
+\begin{table}[h!]
+    \centering
+    \caption{Model performance metrics and computation time for Buildings A, B, and C}
+    \label{tab:buildings_cv_results}
+    \begin{tabular}{llcccc}
+    \hline
+    \textbf{Building} & \textbf{Model} & \textbf{Time (s)} & \textbf{MAE} & \textbf{RMSE} & \textbf{R$^2$} \\ \hline
+\multirow{7}{*}{Building A}& LinearRegression & 0.43 & 0.0121 & 0.0229 & 0.9736 \\
+& RidgeCV & 0.37 & 0.0132 & 0.0237 & 0.9722 \\
+& MultiTaskLassoCV & 0.67 & 0.1814 & 0.2347 & -1.0485 \\
+& DecisionTree & 0.78 & 1.2896 & 1.9034 & 0.5834 \\
+& RandomForest & 48.40 & 1.0541 & 1.6424 & 0.6844 \\
+& XGBoost & 34.92 & 0.4873 & 0.9820 & 0.8898 \\
+& MLP & 80.23 & 0.0394 & 0.0526 & 0.8722 \\
+\hline
+\multirow{7}{*}{Building B}& LinearRegression & 0.40 & 0.0102 & 0.0247 & 0.9647 \\
+& RidgeCV & 0.36 & 0.0115 & 0.0254 & 0.9618 \\
+& MultiTaskLassoCV & 0.62 & 0.1735 & 0.2119 & -1.8871 \\
+& DecisionTree & 0.61 & 1.7285 & 2.5116 & -0.2686 \\
+& RandomForest & 33.93 & 1.4065 & 2.2027 & 0.1254 \\
+& XGBoost & 10.45 & 0.5624 & 1.3882 & 0.8508 \\
+& MLP & 79.26 & 0.0429 & 0.0569 & 0.7767 \\
+\hline
+\multirow{7}{*}{Building C}& LinearRegression & 0.11 & 0.0083 & 0.0183 & 0.9739 \\
+& RidgeCV & 0.39 & 0.0101 & 0.0198 & 0.9704 \\
+& MultiTaskLassoCV & 0.63 & 0.1963 & 0.2413 & -2.2364 \\
+& DecisionTree & 0.64 & 1.4934 & 2.2456 & 0.4236 \\
+& RandomForest & 38.72 & 1.2428 & 1.9481 & 0.5689 \\
+& XGBoost & 21.35 & 0.4598 & 1.0034 & 0.8996 \\
+& MLP & 73.77 & 0.0349 & 0.0478 & 0.8288 \\
+\hline
+
+    \end{tabular}
+\end{table}

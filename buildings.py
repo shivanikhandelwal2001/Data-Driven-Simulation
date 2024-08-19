@@ -165,8 +165,6 @@ def train_and_evaluate_with_hyperopt(building_id, model_name, tuning=False):
         if any(col.endswith(word) for word in ["Air_temperature", "Relative_humidity"])
     ]
 
-    feature_columns = [col for col in data.columns if col not in target_columns]
-
     X, y = train_model.get_input_output_features(data, target_columns)
 
     if tuning:
@@ -188,7 +186,7 @@ def train_and_evaluate_with_hyperopt(building_id, model_name, tuning=False):
     end_time = time.time()
     compute_time = end_time - start_time
     
-    compute_time_path = f"reports/predictions/{building_id}_computation_time.csv"
+    compute_time_path = f"reports/cv_models_metrics/{building_id}_computation_time.csv"
     
     if os.path.exists(compute_time_path):
         compute_time_df = pd.read_csv(compute_time_path)
@@ -202,24 +200,11 @@ def train_and_evaluate_with_hyperopt(building_id, model_name, tuning=False):
         
     compute_time_df.to_csv(compute_time_path, index=False)
 
-    # predict_model.save_models(building_id, model_name, trained_model)
-    # predict_model.save_models_results(building_id, metrics)
     metrics1 = pd.DataFrame.from_dict(metrics[model_name])
-    metrics1.to_csv(f"reports/predictions/{building_id}_{model_name}_metrics.csv", index=False)
-    # predict_model.save_predictions(building_id, model_name, predictions)
+    metrics1.to_csv(f"reports/cv_models_metrics/{building_id}_{model_name}_metrics.csv", index=False)
 
     for target, metric in metrics[model_name].items():
         print(f"Metrics for {target} in {model_name}:\n", metric, "\n")
-
-    # for col in y.columns:
-    #     visualize.plot_predictions(model_name, y, predictions, col, building_id)
-
-    # if model_name not in ["KNN"]:
-    #     feat_df = predict_model.get_feature_importance(
-    #         trained_model, feature_columns, target_columns
-    #     )
-    #     for col in feat_df.columns:
-    #         visualize.feature_importance_plot(model_name, feat_df, col, building_id)
 
 
 def process_all_buildings(building_id, features, process=False):

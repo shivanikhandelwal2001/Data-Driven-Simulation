@@ -1,0 +1,33 @@
+{
+    "LinearRegression": {},
+    "RidgeCV": {
+        "alpha": 0.10781519611220675,
+        "fit_intercept": 1
+    },
+    "DecisionTree": {
+        "max_depth": 31,
+        "min_samples_leaf": 15,
+        "min_samples_split": 11
+    },
+    "XGBoost": {
+        "alpha": 0.011989685133987845,
+        "colsample_bytree": 0.8812937036237768,
+        "gamma": 0.08699739310794755,
+        "lambda": 5.536984264905531,
+        "learning_rate": 0.09749251151999967,
+        "max_depth": 74,
+        "min_child_weight": 14.593163193594966,
+        "n_estimators": 79,
+        "subsample": 0.5314049742529526
+    },
+    "RandomForest": {
+        "max_depth": 35,
+        "min_samples_leaf": 3,
+        "min_samples_split": 5,
+        "n_estimators": 91
+    },
+    "MultiTaskLassoCV": {
+        "alpha": 0.00026790170572405403,
+        "fit_intercept": 1
+    }
+}

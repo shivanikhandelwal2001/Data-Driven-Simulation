@@ -1,0 +1,39 @@
+
+\begin{table}[h!]
+    \centering
+    \caption{Optimal hyperparameters for buildings, detailing the configurations that yielded the best performance across 5 folds of the dataset}
+    \label{tab:best_params}
+    \begin{tabular}{llccc}
+    \hline
+    \textbf{Model} & \textbf{Best Hyperparameters} & \multicolumn{3}{c}{\textbf{Buildings}} \\ \cline{3-5} 
+    & & \textbf{A} & \textbf{B} & \textbf{C} \\ \hline
+\multirow{9}{*}{XGBoost} & colsample\_bytree & 0.9837 & 0.8843 & 0.8813 \\
+& min\_child\_weight & 7.1283 & 16.2552 & 14.5932 \\
+& n\_estimators & 74 & 39 & 79 \\
+& max\_depth & 39 & 45 & 74 \\
+& lambda & 0.0502 & 0.0006 & 5.5370 \\
+& learning\_rate & 0.1093 & 0.1451 & 0.0975 \\
+& subsample & 0.6677 & 0.8441 & 0.5314 \\
+& gamma & 0.0006 & 0.0037 & 0.0870 \\
+& alpha & 5.8314 & 10.2626 & 0.0120 \\
+\hline
+\multirow{3}{*}{DecisionTree} & min\_samples\_split & 12 & 8 & 11 \\
+& min\_samples\_leaf & 13 & 20 & 15 \\
+& max\_depth & 24 & 43 & 31 \\
+\hline
+\multirow{4}{*}{RandomForest} & min\_samples\_split & 2 & 2 & 5 \\
+& min\_samples\_leaf & 2 & 1 & 3 \\
+& n\_estimators & 87 & 61 & 91 \\
+& max\_depth & 43 & 18 & 35 \\
+\hline
+\multirow{2}{*}{RidgeCV} & alpha & 0.3597 & 0.0515 & 0.1078 \\
+& fit\_intercept & 1 & 0 & 1 \\
+\hline
+\multirow{2}{*}{MultiTaskLassoCV} & alpha & 0.0003 & 0.0000 & 0.0003 \\
+& fit\_intercept & 0 & 0 & 1 \\
+\hline
+LinearRegression & None & - & - & - \\
+\hline
+
+    \end{tabular}
+\end{table}
