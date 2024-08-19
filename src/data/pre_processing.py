@@ -125,6 +125,7 @@ def merge_external_data(final_df):
             right_index=True,
             how="outer",
         )
+    print("Final dataframe shape after cleaning:", final_df.shape)
 
     return final_df
 

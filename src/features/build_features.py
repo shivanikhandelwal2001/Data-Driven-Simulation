@@ -32,8 +32,8 @@ def remove_sparse_columns(data: pd.DataFrame, threshold: float = 0.5) -> pd.Data
     :return: DataFrame with sparse columns removed.
     """
     print(f"Before removal, dataset shape: {data.shape}")
-    valid_columns = data.columns[data.isna().mean() < threshold]
-    removed_columns = data.columns[data.isna().mean() >= threshold]
+    valid_columns = data.columns[(data.isna().mean() < threshold)  | (data.columns == 'Gas_volume')]
+    removed_columns = data.columns[(data.isna().mean() >= threshold)  | (data.columns != 'Gas_volume')]
 
     if len(removed_columns) > 0:
         print(

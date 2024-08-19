@@ -3,31 +3,23 @@ from src.data import pre_processing
 from src.visualization import visualize
 from src.features import build_features
 from src.models import train_model, predict_model
-from sklearn.linear_model import LinearRegression, RidgeCV, MultiTaskLassoCV
-from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
-from xgboost import XGBRegressor
-from sklearn.neural_network import MLPRegressor
-from sklearn.neighbors import KNeighborsRegressor
-from sklearn.tree import DecisionTreeRegressor
 from hyperopt import hp, fmin, tpe, Trials
 from joblib import Parallel, delayed, load
 import json
 import os
 import pandas as pd
+import time
 
 
 model_names = [
     "LinearRegression",
     "RidgeCV",
     "MultiTaskLassoCV",
-    "RandomForest",
-    "ExtraTrees",
-    "XGBoost",
-    "MLP",
-    "KNN",
     "DecisionTree",
+    "RandomForest",
+    "XGBoost",
+    "MLP"
 ]
-# model_names = ["LinearRegression"]
 
 SAVE_MODELS = "models/"
 
@@ -76,7 +68,7 @@ def preprocess_and_feature_engineer(building_id, sub_data, additional_features):
     """Preprocess and perform feature engineering on building data."""
     data = build_features.create_lags_features(sub_data)    
     if additional_features:
-        data = build_features.add_rolling_features(data)
+        # data = build_features.add_rolling_features(data)
         data = build_features.add_time_features(data)
         
     data = build_features.check_nan_values(data, remove=True)
@@ -182,35 +174,52 @@ def train_and_evaluate_with_hyperopt(building_id, model_name, tuning=False):
 
     params = f"{SAVE_MODELS}models_best_params/{building_id}_best_params.json"
     best_params = {}
-    # if os.path.exists(params):
-    #     with open(params, "r") as json_file:
-    #         best_params = json.load(json_file).get(model_name, {})
+    if os.path.exists(params):
+        with open(params, "r") as json_file:
+            best_params = json.load(json_file).get(model_name, {})
 
     if not best_params:
         print(f"No best parameters found for {model_name}.")
-
-    trained_model, metrics, predictions = train_model.train_models[model_name](
+        
+    start_time = time.time()
+    metrics = train_model.train_models[model_name](
         X, y, best_params
     )
+    end_time = time.time()
+    compute_time = end_time - start_time
+    
+    compute_time_path = f"reports/predictions/{building_id}_computation_time.csv"
+    
+    if os.path.exists(compute_time_path):
+        compute_time_df = pd.read_csv(compute_time_path)
+    else:
+        compute_time_df = pd.DataFrame(columns=["Model", "Computation Time (s)"])
+        
+    if model_name in compute_time_df["Model"].values:
+        compute_time_df.loc[compute_time_df["Model"] == model_name, "Computation Time (s)"] = compute_time
+    else:
+        compute_time_df.loc[len(compute_time_df)] = [model_name, compute_time]
+        
+    compute_time_df.to_csv(compute_time_path, index=False)
 
-    predict_model.save_models(building_id, model_name, trained_model)
+    # predict_model.save_models(building_id, model_name, trained_model)
     # predict_model.save_models_results(building_id, metrics)
     metrics1 = pd.DataFrame.from_dict(metrics[model_name])
     metrics1.to_csv(f"reports/predictions/{building_id}_{model_name}_metrics.csv", index=False)
-    predict_model.save_predictions(building_id, model_name, predictions)
+    # predict_model.save_predictions(building_id, model_name, predictions)
 
     for target, metric in metrics[model_name].items():
         print(f"Metrics for {target} in {model_name}:\n", metric, "\n")
 
-    for col in y.columns:
-        visualize.plot_predictions(model_name, y, predictions, col, building_id)
+    # for col in y.columns:
+    #     visualize.plot_predictions(model_name, y, predictions, col, building_id)
 
-    if model_name not in ["KNN"]:
-        feat_df = predict_model.get_feature_importance(
-            trained_model, feature_columns, target_columns
-        )
-        for col in feat_df.columns:
-            visualize.feature_importance_plot(model_name, feat_df, col, building_id)
+    # if model_name not in ["KNN"]:
+    #     feat_df = predict_model.get_feature_importance(
+    #         trained_model, feature_columns, target_columns
+    #     )
+    #     for col in feat_df.columns:
+    #         visualize.feature_importance_plot(model_name, feat_df, col, building_id)
 
 
 def process_all_buildings(building_id, features, process=False):
@@ -230,23 +239,8 @@ def process_all_buildings(building_id, features, process=False):
 # List of building IDs to process
 building_ids = [
     "Building01",
-    "Building03",
-    "Building04",
-    "Building06",
-    "Building07",
     "Building08",
-    "Building09",
-    "Building10",
     "Building11",
-    "Building12",
-    "Building13",
-    "Building14",
-    "Building15",
-    "Building16",
-    "Building17",
-    "Building18",
-    "Building19",
-    "Building20",
 ]
 
 
@@ -264,6 +258,6 @@ features = [
 
 # Process all buildings
 Parallel(n_jobs=-1)(
-    delayed(process_all_buildings)(building_id, features, process=True)
-    for building_id in building_ids[1:]
+    delayed(process_all_buildings)(building_id, features, process=False)
+    for building_id in building_ids
 )

@@ -112,8 +112,6 @@ def min_max_scale_features(train, test=None):
 
 
 def train_linear_regression(X, y, params=None, tuning=False):
-    y_index, y_columns = y.index, y.columns
-    X_columns = X.columns
     model_name = "LinearRegression"
     
     tscv = TimeSeriesSplit(n_splits=5)
@@ -129,8 +127,8 @@ def train_linear_regression(X, y, params=None, tuning=False):
         X_train, X_test = X.iloc[train_index], X.iloc[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
         
-        X_train, X_test, scaler_X = standard_scale(X_train, X_test)
-        y_train, y_test, scaler_y = standard_scale(y_train, y_test)
+        X_train, X_test, scaler_X = min_max_scale_features(X_train, X_test)
+        y_train, y_test, scaler_y = min_max_scale_features(y_train, y_test)
 
         model = LinearRegression()
         model.fit(X_train, y_train)
@@ -143,36 +141,11 @@ def train_linear_regression(X, y, params=None, tuning=False):
     
     if tuning:
         return np.mean(metrics_score[model_name]["MSE"])
-    
-    model = LinearRegression()
-    X, scaler_X = standard_scale(X)
-    y, scaler_y = standard_scale(y)
-    
-    model.fit(X, y)
-    
-    print("Feature names:", X_columns.tolist())
-    print("Target column names:", y_columns.tolist())
 
-    predictions = predict_model.make_prediction(
-        model, X, y, y_index, y_columns
-    )
-    predictions = pd.DataFrame(
-        scaler_y.inverse_transform(predictions),
-        index=y_index,
-        columns=[f"{col}_pred" for col in y_columns],
-    )
-    
-    dump(X_columns.tolist(), 'models/feature_order/Building01_LinearRegression_Features.joblib')
-    dump(y_columns.tolist(), 'models/feature_order/Building01_LinearRegression_Targets.joblib')
-    
-    dump(scaler_X, 'models/scalers/Building01_LinearRegression_Scaler_X.joblib')
-    dump(scaler_y, 'models/scalers/Building01_LinearRegression_Scaler_y.joblib')
-
-    return model, metrics_score, predictions
+    return metrics_score
 
 
 def train_ridge_cv(X, y, params=None, tuning=False):
-    y_index, y_columns = y.index, y.columns
     model_name = "RidgeCV"
     
     tscv = TimeSeriesSplit(n_splits=5)
@@ -188,8 +161,8 @@ def train_ridge_cv(X, y, params=None, tuning=False):
         X_train, X_test = X.iloc[train_index], X.iloc[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
         
-        X_train, X_test, scaler_X = standard_scale(X_train, X_test)
-        y_train, y_test, scaler_y = standard_scale(y_train, y_test)
+        X_train, X_test, scaler_X = min_max_scale_features(X_train, X_test)
+        y_train, y_test, scaler_y = min_max_scale_features(y_train, y_test)
 
         model = RidgeCV(alphas=params.get("alphas", [1.0])) if params else RidgeCV()
         model.fit(X_train, y_train)
@@ -202,27 +175,11 @@ def train_ridge_cv(X, y, params=None, tuning=False):
     
     if tuning:
         return np.mean(metrics_score[model_name]["MSE"])
-    
-    model = RidgeCV(alphas=params.get("alphas", [1.0])) if params else RidgeCV()
-    X, scaler_X = standard_scale(X)
-    y, scaler_y = standard_scale(y)
-    
-    model.fit(X, y)
-    
-    predictions = predict_model.make_prediction(
-        model, X, y, y_index, y_columns
-    )
-    predictions = pd.DataFrame(
-        scaler_y.inverse_transform(predictions),
-        index=y_index,
-        columns=[f"{col}_pred" for col in y_columns],
-    )
 
-    return model, metrics_score, predictions
+    return metrics_score
 
 
 def train_lasso_cv(X, y, params=None, tuning=False):
-    y_index, y_columns = y.index, y.columns
     model_name = "MultiTaskLassoCV"
     
     tscv = TimeSeriesSplit(n_splits=5)
@@ -238,8 +195,8 @@ def train_lasso_cv(X, y, params=None, tuning=False):
         X_train, X_test = X.iloc[train_index], X.iloc[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
         
-        X_train, X_test, scaler_X = standard_scale(X_train, X_test)
-        y_train, y_test, scaler_y = standard_scale(y_train, y_test)
+        X_train, X_test, scaler_X = min_max_scale_features(X_train, X_test)
+        y_train, y_test, scaler_y = min_max_scale_features(y_train, y_test)
 
         model = MultiTaskLassoCV(alphas=params.get("alphas", [1.0])) if params else MultiTaskLassoCV()
         model.fit(X_train, y_train)
@@ -252,27 +209,11 @@ def train_lasso_cv(X, y, params=None, tuning=False):
     
     if tuning:
         return np.mean(metrics_score[model_name]["MSE"])
-    
-    model = MultiTaskLassoCV(alphas=params.get("alphas", [1.0])) if params else MultiTaskLassoCV()
-    X, scaler_X = standard_scale(X)
-    y, scaler_y = standard_scale(y)
-    
-    model.fit(X, y)
-    
-    predictions = predict_model.make_prediction(
-        model, X, y, y_index, y_columns
-    )
-    predictions = pd.DataFrame(
-        scaler_y.inverse_transform(predictions),
-        index=y_index,
-        columns=[f"{col}_pred" for col in y_columns],
-    )
 
-    return model, metrics_score, predictions
+    return metrics_score
 
 
 def train_random_forest(X, y, params=None, tuning=False):
-    y_index, y_columns = y.index, y.columns
     model_name = "RandomForest"
     
     tscv = TimeSeriesSplit(n_splits=5)
@@ -302,19 +243,11 @@ def train_random_forest(X, y, params=None, tuning=False):
     
     if tuning:
         return np.mean(metrics_score[model_name]["MSE"])
-    
-    model = RandomForestRegressor(**params)
-    model.fit(X, y)
-    
-    predictions = predict_model.make_prediction(
-        model, X, y, y_index, y_columns
-    )
 
-    return model, metrics_score, predictions
+    return metrics_score
 
 
 def train_extra_trees(X, y, params=None, tuning=False):
-    y_index, y_columns = y.index, y.columns
     model_name = "ExtraTrees"
     
     tscv = TimeSeriesSplit(n_splits=5)
@@ -344,19 +277,11 @@ def train_extra_trees(X, y, params=None, tuning=False):
     
     if tuning:
         return np.mean(metrics_score[model_name]["MSE"])
-    
-    model = ExtraTreesRegressor(**params)
-    model.fit(X, y)
-    
-    predictions = predict_model.make_prediction(
-        model, X, y, y_index, y_columns
-    )
 
-    return model, metrics_score, predictions
+    return metrics_score
 
 
 def train_xgboost(X, y, params=None, tuning=False):
-    y_index, y_columns = y.index, y.columns
     model_name = "XGBoost"
     
     tscv = TimeSeriesSplit(n_splits=5)
@@ -383,19 +308,11 @@ def train_xgboost(X, y, params=None, tuning=False):
     
     if tuning:
         return np.mean(metrics_score[model_name]["MSE"])
-    
-    model = XGBRegressor(**params) if params else XGBRegressor()
-    model.fit(X, y)
-    
-    predictions = predict_model.make_prediction(
-        model, X, y, y_index, y_columns
-    )
 
-    return model, metrics_score, predictions
+    return metrics_score
 
 
 def train_mlp(X, y, params=None, tuning=False):
-    y_index, y_columns = y.index, y.columns
     model_name = "MLP"
     
     tscv = TimeSeriesSplit(n_splits=5)
@@ -443,35 +360,10 @@ def train_mlp(X, y, params=None, tuning=False):
     if tuning:
         return np.mean(metrics_score[model_name]["MSE"])
     
-    model = Sequential()
-    for layer_size in params["hidden_layer_sizes"]:
-        model.add(Dense(layer_size, activation=params["activation"]))
-        model.add(Dropout(params["dropout_rate"]))
-    model.add(Dense(num_outputs))
-    model.compile(optimizer=params["optimizer"], loss="mean_squared_error")
-    
-    X, scaler_X = min_max_scale_features(X)
-    y, scaler_y = min_max_scale_features(y)
-    
-    model.fit(X, y, batch_size=params.get("batch_size"), epochs=params["epochs"], verbose=0)
-    
-    predictions = predict_model.make_prediction(
-        model, X, y, y_index, y_columns
-    )
-    predictions = pd.DataFrame(
-        scaler_y.inverse_transform(predictions),
-        index=y_index,
-        columns=[f"{col}_pred" for col in y_columns],
-    )
-
-    dump(scaler_X, 'models/scalers/Building01_MLP_Scaler_X.joblib')
-    dump(scaler_y, 'models/scalers/Building01_MLP_Scaler_y.joblib')
-    
-    return model, metrics_score, predictions
+    return metrics_score
 
 
 def train_knn(X, y, params=None, tuning=False):
-    y_index, y_columns = y.index, y.columns
     model_name = "KNN"
     
     tscv = TimeSeriesSplit(n_splits=5)
@@ -501,19 +393,11 @@ def train_knn(X, y, params=None, tuning=False):
     
     if tuning:
         return np.mean(metrics_score[model_name]["MSE"])
-    
-    model = KNeighborsRegressor(**params)
-    model.fit(X, y)
-    
-    predictions = predict_model.make_prediction(
-        model, X, y, y_index, y_columns
-    )
 
-    return model, metrics_score, predictions
+    return metrics_score
 
 
 def train_decision_tree(X, y, params=None, tuning=False):
-    y_index, y_columns = y.index, y.columns
     model_name = "DecisionTree"
     
     tscv = TimeSeriesSplit(n_splits=5)
@@ -540,15 +424,8 @@ def train_decision_tree(X, y, params=None, tuning=False):
     
     if tuning:
         return np.mean(metrics_score[model_name]["MSE"])
-    
-    model = DecisionTreeRegressor(**params) if params else DecisionTreeRegressor()
-    model.fit(X, y)
-    
-    predictions = predict_model.make_prediction(
-        model, X, y, y_index, y_columns
-    )
 
-    return model, metrics_score, predictions
+    return metrics_score
 
 
 def objective_function(params, model_name, X, y):
