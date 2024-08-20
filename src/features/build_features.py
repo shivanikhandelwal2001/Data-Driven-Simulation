@@ -34,8 +34,12 @@ def remove_sparse_columns(data: pd.DataFrame, threshold: float = 0.5) -> pd.Data
     :return: DataFrame with sparse columns removed.
     """
     print(f"Before removal, dataset shape: {data.shape}")
-    valid_columns = data.columns[(data.isna().mean() < threshold)  | (data.columns == 'Gas_volume')]
-    removed_columns = data.columns[(data.isna().mean() >= threshold)  | (data.columns != 'Gas_volume')]
+    valid_columns = data.columns[
+        (data.isna().mean() < threshold) | (data.columns == "Gas_volume")
+    ]
+    removed_columns = data.columns[
+        (data.isna().mean() >= threshold) | (data.columns != "Gas_volume")
+    ]
 
     if len(removed_columns) > 0:
         print(
@@ -112,7 +116,7 @@ def remove_outliers(sub_data, col):
     """
     dataset = mark_outliers_chauvenet(sub_data, col)
     dataset.loc[dataset[col + "_outlier"], col] = np.nan
-    
+
     sub_data.loc[:, col] = dataset[col]
     n_outliers = dataset[col + "_outlier"].sum()
     print(f"Removed {n_outliers} outliers from {col}")
@@ -152,7 +156,7 @@ def create_lags_features(dataset):
             dataset = dataset.assign(**col_dict)
             added_features = list(col_dict.keys())
             print(f"Added Lag Features {added_features}")
-            
+
     return dataset
 
 
@@ -165,7 +169,7 @@ def add_rolling_features(dataset):
     """
     rolls = [12, 48]
     agg_funcs = ["mean", "std"]
-    
+
     for col in dataset.columns:
         if (col.endswith("Air_temperature")) or (col.endswith("Relative_humidity")):
             rolling_df = pd.concat(
@@ -178,7 +182,7 @@ def add_rolling_features(dataset):
                 ],
                 axis=1,
             )
-            
+
             dataset = dataset.assign(**rolling_df.to_dict("list"))
             added_features = rolling_df.columns.tolist()
             print(f"Added Rolling Features {added_features}")
@@ -186,7 +190,7 @@ def add_rolling_features(dataset):
     return dataset
 
 
-def make_series_stationary(df, columns, seasonal_period=48*7, freq="30min"):
+def make_series_stationary(df, columns, seasonal_period=48 * 7, freq="30min"):
     """
     Applies AutoStationaryTransformer to specified columns of a DataFrame to make the series stationary.
 
@@ -204,10 +208,10 @@ def make_series_stationary(df, columns, seasonal_period=48*7, freq="30min"):
     for col in columns:
         auto_stationary = AutoStationaryTransformer(seasonal_period=seasonal_period)
         y = df[col]
-        
+
         y_stat = auto_stationary.fit_transform(y, freq=freq)
         df.loc[:, col] = y_stat.values
-        
+
         # Store the transformer
         transformers[col] = auto_stationary
 
@@ -233,11 +237,11 @@ def add_time_features(data):
     :param data: DataFrame with DateTimeIndex.
     :return: DataFrame with added features.
     """
-    data['day'] = data.index.day
-    data['month'] = data.index.month
+    data["day"] = data.index.day
+    data["month"] = data.index.month
     # data['year'] = data.index.year
-    data['hour'] = data.index.hour
-    data['weekday'] = data.index.weekday
+    data["hour"] = data.index.hour
+    data["weekday"] = data.index.weekday
 
     return data
 

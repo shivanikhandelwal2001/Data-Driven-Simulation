@@ -86,10 +86,8 @@ def extract_and_transform_data(building_id):
     names = list(d.keys())
 
     building_df2.columns = pd.MultiIndex.from_tuples(tuples)
-    
-    print(
-        f"No. of rows in {building.get('id')} after pivoting - {building_df2.shape}"
-    )
+
+    print(f"No. of rows in {building.get('id')} after pivoting - {building_df2.shape}")
     print(f"Variables types - {set(d['variableType'])}")
 
     building_df3 = building_df2.resample("30T").mean()

@@ -18,7 +18,7 @@ model_names = [
     "DecisionTree",
     "RandomForest",
     "XGBoost",
-    "MLP"
+    "MLP",
 ]
 
 SAVE_MODELS = "models/"
@@ -66,14 +66,14 @@ def visualize_building_data(building_id, features):
 
 def preprocess_and_feature_engineer(building_id, sub_data, additional_features):
     """Preprocess and perform feature engineering on building data."""
-    data = build_features.create_lags_features(sub_data)    
+    data = build_features.create_lags_features(sub_data)
     if additional_features:
         # data = build_features.add_rolling_features(data)
         data = build_features.add_time_features(data)
-        
+
     data = build_features.check_nan_values(data, remove=True)
     data_imputed = build_features.fill_missing_values(data)
-    
+
     build_features.save_processed_data(data_imputed, building_id)
 
 
@@ -89,9 +89,7 @@ def hyperparameter_tuning(building_id, model_name, X, y):
     else:
         trials = Trials()
         best = fmin(
-            fn=lambda params: train_model.objective_function(
-                params, model_name, X, y
-            ),
+            fn=lambda params: train_model.objective_function(params, model_name, X, y),
             space=space,
             algo=tpe.suggest,
             max_evals=100,
@@ -178,30 +176,32 @@ def train_and_evaluate_with_hyperopt(building_id, model_name, tuning=False):
 
     if not best_params:
         print(f"No best parameters found for {model_name}.")
-        
+
     start_time = time.time()
-    metrics = train_model.train_models[model_name](
-        X, y, best_params
-    )
+    metrics = train_model.train_models[model_name](X, y, best_params)
     end_time = time.time()
     compute_time = end_time - start_time
-    
+
     compute_time_path = f"reports/cv_models_metrics/{building_id}_computation_time.csv"
-    
+
     if os.path.exists(compute_time_path):
         compute_time_df = pd.read_csv(compute_time_path)
     else:
         compute_time_df = pd.DataFrame(columns=["Model", "Computation Time (s)"])
-        
+
     if model_name in compute_time_df["Model"].values:
-        compute_time_df.loc[compute_time_df["Model"] == model_name, "Computation Time (s)"] = compute_time
+        compute_time_df.loc[
+            compute_time_df["Model"] == model_name, "Computation Time (s)"
+        ] = compute_time
     else:
         compute_time_df.loc[len(compute_time_df)] = [model_name, compute_time]
-        
+
     compute_time_df.to_csv(compute_time_path, index=False)
 
     metrics1 = pd.DataFrame.from_dict(metrics[model_name])
-    metrics1.to_csv(f"reports/cv_models_metrics/{building_id}_{model_name}_metrics.csv", index=False)
+    metrics1.to_csv(
+        f"reports/cv_models_metrics/{building_id}_{model_name}_metrics.csv", index=False
+    )
 
     for target, metric in metrics[model_name].items():
         print(f"Metrics for {target} in {model_name}:\n", metric, "\n")
@@ -213,7 +213,9 @@ def process_all_buildings(building_id, features, process=False):
     if process:
         process_building_data(building_id)
         sub_data = visualize_building_data(building_id, features)
-        preprocess_and_feature_engineer(building_id, sub_data, additional_features=False)
+        preprocess_and_feature_engineer(
+            building_id, sub_data, additional_features=False
+        )
 
     Parallel(n_jobs=-1)(
         delayed(train_and_evaluate_with_hyperopt)(building_id, model, tuning=False)

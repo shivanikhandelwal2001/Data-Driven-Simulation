@@ -620,7 +620,6 @@ class DetrendingTransformer:
 
 
 class DeseasonalizingTransformer:
-
     ALLOWABLE_EXTRACTION_METHODS = ["period_averages", "fourier_terms"]
     DESEASONALIZERS = {"period_averages": STL, "fourier_terms": FourierDecomposition}
 
@@ -790,7 +789,7 @@ class AutoStationaryTransformer:
             seasonality_max_lags (int, optional): Maximum lags within which the transformer tries to identifies seasonality, in case seasonality is not provided. Defaults to 60.
             trend_check_params (Dict, optional): The parameters which are used in the statistical tests for trend. `check_trend`. Defaults to {"mann_kendall": False}.
             detrender_params (Dict, optional): The parameters passed to `DetrendingTransformer`. Defaults to {"degree":1}.
-            deseasonalizer_params (Dict, optional): The parameters passed to `DeseasonalizingTransformer`. 
+            deseasonalizer_params (Dict, optional): The parameters passed to `DeseasonalizingTransformer`.
                 seasonality_extraction is fixed as "period_averages". Defaults to {}.
             box_cox_params (Dict, optional): The parameters passed on to `BoxCoxTransformer`. Defaults to {"optimization": "guerrero"}.
         """
@@ -838,11 +837,15 @@ class AutoStationaryTransformer:
         else:
             self.freq = y.index.freq if freq is None else freq
         self._pipeline = []
-        _min_max_lag = min(len(y) // 2 - 2 , self.seasonality_max_lags)
+        _min_max_lag = min(len(y) // 2 - 2, self.seasonality_max_lags)
         n_unique = len(np.unique(y))
-        if _min_max_lag>0 and n_unique>2:
+        if _min_max_lag > 0 and n_unique > 2:
             _trend_check = check_trend(y, self.confidence, **self.trend_check_params)
-            self._trend_check = {k:v for k,v in _trend_check._asdict().items() if k!="deterministic_trend_results"}
+            self._trend_check = {
+                k: v
+                for k, v in _trend_check._asdict().items()
+                if k != "deterministic_trend_results"
+            }
             if _trend_check.trend:
                 detrender = DetrendingTransformer(**self.detrender_params)
                 y = detrender.fit_transform(y, freq=self.freq)
@@ -854,14 +857,16 @@ class AutoStationaryTransformer:
                 else self.seasonal_period + 1,
                 seasonal_period=self.seasonal_period,
                 confidence=self.confidence,
-                verbose=False
+                verbose=False,
             )
             self._seasonality_check = _seasonality_check._asdict()
             if _seasonality_check.seasonal and self._infer_seasonality:
                 self.seasonal_period = int(_seasonality_check.seasonal_periods)
-            if _seasonality_check.seasonal and len(y)>2*self.seasonal_period:
+            if _seasonality_check.seasonal and len(y) > 2 * self.seasonal_period:
                 self.deseasonalizer_params["seasonal_period"] = self.seasonal_period
-                deseasonalizer = DeseasonalizingTransformer(**self.deseasonalizer_params)
+                deseasonalizer = DeseasonalizingTransformer(
+                    **self.deseasonalizer_params
+                )
                 y = deseasonalizer.fit_transform(y, freq=self.freq)
                 self._pipeline.append(deseasonalizer)
 
@@ -874,7 +879,10 @@ class AutoStationaryTransformer:
                     self._pipeline.append(add_m)
                 # No seasonality has been identified. But we still need to split the series into sub series for Guerrero's method
                 self.box_cox_params["seasonal_period"] = max(
-                    len(y) // 4 if self.seasonal_period is None else self.seasonal_period, 5
+                    len(y) // 4
+                    if self.seasonal_period is None
+                    else self.seasonal_period,
+                    5,
                 )
                 box_cox_transformer = BoxCoxTransformer(**self.box_cox_params)
                 y = box_cox_transformer.fit_transform(y)

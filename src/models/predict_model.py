@@ -107,9 +107,11 @@ def save_models_results(building_id, metrics):
     else:
         df = pd.DataFrame()
 
-    metrics_mean = {model: {metric: np.mean(values) for metric, values in metrics.items()} 
-                    for model, metrics in metrics.items()}
-    
+    metrics_mean = {
+        model: {metric: np.mean(values) for metric, values in metrics.items()}
+        for model, metrics in metrics.items()
+    }
+
     for model_name, value in metrics_mean.items():
         if model_name in df.index:
             df.loc[model_name] = value
@@ -138,31 +140,52 @@ def save_best_params(building_id, model_name, params):
         json.dump(existing_data, json_file, indent=4)
 
 
-def save_models(building_id, model_name, model, X_columns, y_columns, scaler_X, scaler_y, feature_importance):
+def save_models(
+    building_id,
+    model_name,
+    model,
+    X_columns,
+    y_columns,
+    scaler_X,
+    scaler_y,
+    feature_importance,
+):
     """
     Save the trained model to a file with associated components.
     """
     file_name = f"{SAVE_MODELS}final_models/{building_id}_{model_name}.joblib"
     dump(model, file_name)
-    
-    dump(X_columns.tolist(), f"{SAVE_MODELS}feature_order/{building_id}_{model_name}_features.joblib")
-    dump(y_columns.tolist(), f"{SAVE_MODELS}feature_order/{building_id}_{model_name}_targets.joblib")
-    feature_importance.to_csv(f"{SAVE_MODELS}feature_order/{building_id}_{model_name}_feature_importance.csv")
+
+    dump(
+        X_columns.tolist(),
+        f"{SAVE_MODELS}feature_order/{building_id}_{model_name}_features.joblib",
+    )
+    dump(
+        y_columns.tolist(),
+        f"{SAVE_MODELS}feature_order/{building_id}_{model_name}_targets.joblib",
+    )
+    feature_importance.to_csv(
+        f"{SAVE_MODELS}feature_order/{building_id}_{model_name}_feature_importance.csv"
+    )
 
     dump(scaler_X, f"{SAVE_MODELS}scalers/{building_id}_{model_name}_scaler_X.joblib")
     dump(scaler_y, f"{SAVE_MODELS}scalers/{building_id}_{model_name}_scaler_y.joblib")
-    
-    
+
+
 def load_saved_model(building_id, model_name):
     """
     Load the saved model, feature order, target order, and scalers for a building.
     """
     model = load(f"{SAVE_MODELS}final_models/{building_id}_{model_name}.joblib")
 
-    X_columns = load(f"{SAVE_MODELS}feature_order/{building_id}_{model_name}_features.joblib")
-    y_columns = load(f"{SAVE_MODELS}feature_order/{building_id}_{model_name}_targets.joblib")
-    
+    X_columns = load(
+        f"{SAVE_MODELS}feature_order/{building_id}_{model_name}_features.joblib"
+    )
+    y_columns = load(
+        f"{SAVE_MODELS}feature_order/{building_id}_{model_name}_targets.joblib"
+    )
+
     scaler_X = load(f"{SAVE_MODELS}scalers/{building_id}_{model_name}_scaler_X.joblib")
     scaler_y = load(f"{SAVE_MODELS}scalers/{building_id}_{model_name}_scaler_y.joblib")
-    
+
     return model, X_columns, y_columns, scaler_X, scaler_y

@@ -89,7 +89,7 @@ def standard_scale(train, test=None):
     if test is not None:
         test_scaled = scaler.transform(test)
         return train_scaled, test_scaled, scaler
-    
+
     return train_scaled, scaler
 
 
@@ -106,38 +106,41 @@ def min_max_scale_features(train, test=None):
     if test is not None:
         test_scaled = scaler.transform(test)
         return train_scaled, test_scaled, scaler
-    
+
     return train_scaled, scaler
 
 
 def train_linear_regression(X, y, params=None, tuning=False):
     model_name = "LinearRegression"
-    
+
     tscv = TimeSeriesSplit(n_splits=5)
-    metrics_score = {model_name:
-        {
+    metrics_score = {
+        model_name: {
             "MAE": [],
             "MSE": [],
             "RMSE": [],
             "R2 Score": [],
-        }}
+        }
+    }
 
     for train_index, test_index in tscv.split(X):
         X_train, X_test = X.iloc[train_index], X.iloc[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
-        
+
         X_train, X_test, scaler_X = min_max_scale_features(X_train, X_test)
         y_train, y_test, scaler_y = min_max_scale_features(y_train, y_test)
 
         model = LinearRegression()
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
-        
+
         metrics_score[model_name]["MAE"].append(mean_absolute_error(y_test, y_pred))
         metrics_score[model_name]["MSE"].append(mean_squared_error(y_test, y_pred))
-        metrics_score[model_name]["RMSE"].append(np.sqrt(mean_squared_error(y_test, y_pred)))
+        metrics_score[model_name]["RMSE"].append(
+            np.sqrt(mean_squared_error(y_test, y_pred))
+        )
         metrics_score[model_name]["R2 Score"].append(r2_score(y_test, y_pred))
-    
+
     if tuning:
         return np.mean(metrics_score[model_name]["MSE"])
 
@@ -146,32 +149,35 @@ def train_linear_regression(X, y, params=None, tuning=False):
 
 def train_ridge_cv(X, y, params=None, tuning=False):
     model_name = "RidgeCV"
-    
+
     tscv = TimeSeriesSplit(n_splits=5)
-    metrics_score = {model_name:
-        {
+    metrics_score = {
+        model_name: {
             "MAE": [],
             "MSE": [],
             "RMSE": [],
             "R2 Score": [],
-        }}
+        }
+    }
 
     for train_index, test_index in tscv.split(X):
         X_train, X_test = X.iloc[train_index], X.iloc[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
-        
+
         X_train, X_test, scaler_X = min_max_scale_features(X_train, X_test)
         y_train, y_test, scaler_y = min_max_scale_features(y_train, y_test)
 
         model = RidgeCV(alphas=params.get("alphas", [1.0])) if params else RidgeCV()
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
-        
+
         metrics_score[model_name]["MAE"].append(mean_absolute_error(y_test, y_pred))
         metrics_score[model_name]["MSE"].append(mean_squared_error(y_test, y_pred))
-        metrics_score[model_name]["RMSE"].append(np.sqrt(mean_squared_error(y_test, y_pred)))
+        metrics_score[model_name]["RMSE"].append(
+            np.sqrt(mean_squared_error(y_test, y_pred))
+        )
         metrics_score[model_name]["R2 Score"].append(r2_score(y_test, y_pred))
-    
+
     if tuning:
         return np.mean(metrics_score[model_name]["MSE"])
 
@@ -180,32 +186,39 @@ def train_ridge_cv(X, y, params=None, tuning=False):
 
 def train_lasso_cv(X, y, params=None, tuning=False):
     model_name = "MultiTaskLassoCV"
-    
+
     tscv = TimeSeriesSplit(n_splits=5)
-    metrics_score = {model_name:
-        {
+    metrics_score = {
+        model_name: {
             "MAE": [],
             "MSE": [],
             "RMSE": [],
             "R2 Score": [],
-        }}
+        }
+    }
 
     for train_index, test_index in tscv.split(X):
         X_train, X_test = X.iloc[train_index], X.iloc[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
-        
+
         X_train, X_test, scaler_X = min_max_scale_features(X_train, X_test)
         y_train, y_test, scaler_y = min_max_scale_features(y_train, y_test)
 
-        model = MultiTaskLassoCV(alphas=params.get("alphas", [1.0])) if params else MultiTaskLassoCV()
+        model = (
+            MultiTaskLassoCV(alphas=params.get("alphas", [1.0]))
+            if params
+            else MultiTaskLassoCV()
+        )
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
-        
+
         metrics_score[model_name]["MAE"].append(mean_absolute_error(y_test, y_pred))
         metrics_score[model_name]["MSE"].append(mean_squared_error(y_test, y_pred))
-        metrics_score[model_name]["RMSE"].append(np.sqrt(mean_squared_error(y_test, y_pred)))
+        metrics_score[model_name]["RMSE"].append(
+            np.sqrt(mean_squared_error(y_test, y_pred))
+        )
         metrics_score[model_name]["R2 Score"].append(r2_score(y_test, y_pred))
-    
+
     if tuning:
         return np.mean(metrics_score[model_name]["MSE"])
 
@@ -214,18 +227,19 @@ def train_lasso_cv(X, y, params=None, tuning=False):
 
 def train_random_forest(X, y, params=None, tuning=False):
     model_name = "RandomForest"
-    
+
     tscv = TimeSeriesSplit(n_splits=5)
     params = params if params else {}
     params["n_jobs"] = params.get("n_jobs", -1)
 
-    metrics_score = {model_name:
-        {
+    metrics_score = {
+        model_name: {
             "MAE": [],
             "MSE": [],
             "RMSE": [],
             "R2 Score": [],
-        }}
+        }
+    }
 
     for train_index, test_index in tscv.split(X):
         X_train, X_test = X.iloc[train_index], X.iloc[test_index]
@@ -234,12 +248,14 @@ def train_random_forest(X, y, params=None, tuning=False):
         model = RandomForestRegressor(**params)
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
-        
+
         metrics_score[model_name]["MAE"].append(mean_absolute_error(y_test, y_pred))
         metrics_score[model_name]["MSE"].append(mean_squared_error(y_test, y_pred))
-        metrics_score[model_name]["RMSE"].append(np.sqrt(mean_squared_error(y_test, y_pred)))
+        metrics_score[model_name]["RMSE"].append(
+            np.sqrt(mean_squared_error(y_test, y_pred))
+        )
         metrics_score[model_name]["R2 Score"].append(r2_score(y_test, y_pred))
-    
+
     if tuning:
         return np.mean(metrics_score[model_name]["MSE"])
 
@@ -248,18 +264,19 @@ def train_random_forest(X, y, params=None, tuning=False):
 
 def train_extra_trees(X, y, params=None, tuning=False):
     model_name = "ExtraTrees"
-    
+
     tscv = TimeSeriesSplit(n_splits=5)
     params = params if params else {}
     params["n_jobs"] = params.get("n_jobs", -1)
 
-    metrics_score = {model_name:
-        {
+    metrics_score = {
+        model_name: {
             "MAE": [],
             "MSE": [],
             "RMSE": [],
             "R2 Score": [],
-        }}
+        }
+    }
 
     for train_index, test_index in tscv.split(X):
         X_train, X_test = X.iloc[train_index], X.iloc[test_index]
@@ -268,12 +285,14 @@ def train_extra_trees(X, y, params=None, tuning=False):
         model = ExtraTreesRegressor(**params)
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
-        
+
         metrics_score[model_name]["MAE"].append(mean_absolute_error(y_test, y_pred))
         metrics_score[model_name]["MSE"].append(mean_squared_error(y_test, y_pred))
-        metrics_score[model_name]["RMSE"].append(np.sqrt(mean_squared_error(y_test, y_pred)))
+        metrics_score[model_name]["RMSE"].append(
+            np.sqrt(mean_squared_error(y_test, y_pred))
+        )
         metrics_score[model_name]["R2 Score"].append(r2_score(y_test, y_pred))
-    
+
     if tuning:
         return np.mean(metrics_score[model_name]["MSE"])
 
@@ -282,15 +301,16 @@ def train_extra_trees(X, y, params=None, tuning=False):
 
 def train_xgboost(X, y, params=None, tuning=False):
     model_name = "XGBoost"
-    
+
     tscv = TimeSeriesSplit(n_splits=5)
-    metrics_score = {model_name:
-        {
+    metrics_score = {
+        model_name: {
             "MAE": [],
             "MSE": [],
             "RMSE": [],
             "R2 Score": [],
-        }}
+        }
+    }
 
     for train_index, test_index in tscv.split(X):
         X_train, X_test = X.iloc[train_index], X.iloc[test_index]
@@ -299,12 +319,14 @@ def train_xgboost(X, y, params=None, tuning=False):
         model = XGBRegressor(**params) if params else XGBRegressor()
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
-        
+
         metrics_score[model_name]["MAE"].append(mean_absolute_error(y_test, y_pred))
         metrics_score[model_name]["MSE"].append(mean_squared_error(y_test, y_pred))
-        metrics_score[model_name]["RMSE"].append(np.sqrt(mean_squared_error(y_test, y_pred)))
+        metrics_score[model_name]["RMSE"].append(
+            np.sqrt(mean_squared_error(y_test, y_pred))
+        )
         metrics_score[model_name]["R2 Score"].append(r2_score(y_test, y_pred))
-    
+
     if tuning:
         return np.mean(metrics_score[model_name]["MSE"])
 
@@ -313,34 +335,35 @@ def train_xgboost(X, y, params=None, tuning=False):
 
 def train_mlp(X, y, params=None, tuning=False):
     model_name = "MLP"
-    
+
     tscv = TimeSeriesSplit(n_splits=5)
     if not params:
         params = {
             "hidden_layer_sizes": (100,),
             "activation": "relu",
             "batch_size": 32,
-            "dropout_rate": 0.5,   
-            "optimizer": "adam",           
-            "epochs": 200
+            "dropout_rate": 0.5,
+            "optimizer": "adam",
+            "epochs": 200,
         }
-        
+
     num_outputs = y.shape[1]
-    metrics_score = {model_name:
-        {
+    metrics_score = {
+        model_name: {
             "MAE": [],
             "MSE": [],
             "RMSE": [],
             "R2 Score": [],
-        }}
+        }
+    }
 
     for train_index, test_index in tscv.split(X):
         X_train, X_test = X.iloc[train_index], X.iloc[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
-        
+
         X_train, X_test, scaler_X = min_max_scale_features(X_train, X_test)
         y_train, y_test, scaler_y = min_max_scale_features(y_train, y_test)
-        
+
         model = Sequential()
         for layer_size in params["hidden_layer_sizes"]:
             model.add(Dense(layer_size, activation=params["activation"]))
@@ -348,34 +371,43 @@ def train_mlp(X, y, params=None, tuning=False):
         model.add(Dense(num_outputs))
         model.compile(optimizer=params["optimizer"], loss="mean_squared_error")
 
-        model.fit(X_train, y_train, batch_size=params.get("batch_size"), epochs=params["epochs"], verbose=0)
+        model.fit(
+            X_train,
+            y_train,
+            batch_size=params.get("batch_size"),
+            epochs=params["epochs"],
+            verbose=0,
+        )
         y_pred = model.predict(X_test)
-        
+
         metrics_score[model_name]["MAE"].append(mean_absolute_error(y_test, y_pred))
         metrics_score[model_name]["MSE"].append(mean_squared_error(y_test, y_pred))
-        metrics_score[model_name]["RMSE"].append(np.sqrt(mean_squared_error(y_test, y_pred)))
+        metrics_score[model_name]["RMSE"].append(
+            np.sqrt(mean_squared_error(y_test, y_pred))
+        )
         metrics_score[model_name]["R2 Score"].append(r2_score(y_test, y_pred))
-    
+
     if tuning:
         return np.mean(metrics_score[model_name]["MSE"])
-    
+
     return metrics_score
 
 
 def train_knn(X, y, params=None, tuning=False):
     model_name = "KNN"
-    
+
     tscv = TimeSeriesSplit(n_splits=5)
     params = params if params else {}
     params["n_jobs"] = params.get("n_jobs", -1)
 
-    metrics_score = {model_name:
-        {
+    metrics_score = {
+        model_name: {
             "MAE": [],
             "MSE": [],
             "RMSE": [],
             "R2 Score": [],
-        }}
+        }
+    }
 
     for train_index, test_index in tscv.split(X):
         X_train, X_test = X.iloc[train_index], X.iloc[test_index]
@@ -384,12 +416,14 @@ def train_knn(X, y, params=None, tuning=False):
         model = KNeighborsRegressor(**params)
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
-        
+
         metrics_score[model_name]["MAE"].append(mean_absolute_error(y_test, y_pred))
         metrics_score[model_name]["MSE"].append(mean_squared_error(y_test, y_pred))
-        metrics_score[model_name]["RMSE"].append(np.sqrt(mean_squared_error(y_test, y_pred)))
+        metrics_score[model_name]["RMSE"].append(
+            np.sqrt(mean_squared_error(y_test, y_pred))
+        )
         metrics_score[model_name]["R2 Score"].append(r2_score(y_test, y_pred))
-    
+
     if tuning:
         return np.mean(metrics_score[model_name]["MSE"])
 
@@ -398,15 +432,16 @@ def train_knn(X, y, params=None, tuning=False):
 
 def train_decision_tree(X, y, params=None, tuning=False):
     model_name = "DecisionTree"
-    
+
     tscv = TimeSeriesSplit(n_splits=5)
-    metrics_score = {model_name:
-        {
+    metrics_score = {
+        model_name: {
             "MAE": [],
             "MSE": [],
             "RMSE": [],
             "R2 Score": [],
-        }}
+        }
+    }
 
     for train_index, test_index in tscv.split(X):
         X_train, X_test = X.iloc[train_index], X.iloc[test_index]
@@ -415,12 +450,14 @@ def train_decision_tree(X, y, params=None, tuning=False):
         model = DecisionTreeRegressor(**params) if params else DecisionTreeRegressor()
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
-        
+
         metrics_score[model_name]["MAE"].append(mean_absolute_error(y_test, y_pred))
         metrics_score[model_name]["MSE"].append(mean_squared_error(y_test, y_pred))
-        metrics_score[model_name]["RMSE"].append(np.sqrt(mean_squared_error(y_test, y_pred)))
+        metrics_score[model_name]["RMSE"].append(
+            np.sqrt(mean_squared_error(y_test, y_pred))
+        )
         metrics_score[model_name]["R2 Score"].append(r2_score(y_test, y_pred))
-    
+
     if tuning:
         return np.mean(metrics_score[model_name]["MSE"])
 
@@ -522,7 +559,7 @@ def define_hyperparameters_space(model_name):
             "min_samples_split": scope.int(hp.quniform("min_samples_split", 2, 20, 1)),
             "min_samples_leaf": scope.int(hp.quniform("min_samples_leaf", 1, 20, 1)),
         }
-        
+
     elif model_name == "LSTM":
         space = {
             "lstm_units": scope.int(hp.quniform("lstm_units", 50, 300, 10)),
@@ -531,14 +568,16 @@ def define_hyperparameters_space(model_name):
             "batch_size": scope.int(hp.quniform("batch_size", 16, 128, 16)),
             "epochs": scope.int(hp.quniform("epochs", 50, 200, 20)),
         }
-        
+
     elif model_name == "EnhancedLSTM":
         space = {
             "lstm_units": scope.int(hp.quniform("lstm_units", 50, 300, 10)),
             "dropout_rate": hp.uniform("dropout_rate", 0.1, 0.5),
             "batch_size": scope.int(hp.quniform("batch_size", 16, 128, 16)),
             "epochs": scope.int(hp.quniform("epochs", 50, 200, 20)),
-            "learning_rate": hp.loguniform("learning_rate", np.log(0.0001), np.log(0.01)),
+            "learning_rate": hp.loguniform(
+                "learning_rate", np.log(0.0001), np.log(0.01)
+            ),
         }
 
     return space
@@ -561,16 +600,16 @@ def train_lstm_model(X, y, params=None, tuning=False):
     """
     y_index, y_columns = y.index, y.columns
     model_name = "LSTM"
-    
+
     tscv = TimeSeriesSplit(n_splits=5)
-    
+
     if not params:
         params = {
-            'lstm_units': 64,
-            'dropout_rate': 0.2,
-            'optimizer': 'adam',
-            'epochs': 50,
-            'batch_size': 32
+            "lstm_units": 64,
+            "dropout_rate": 0.2,
+            "optimizer": "adam",
+            "epochs": 50,
+            "batch_size": 32,
         }
 
     metrics_score = {"LSTM": {"MAE": [], "MSE": [], "RMSE": [], "R2 Score": []}}
@@ -585,19 +624,32 @@ def train_lstm_model(X, y, params=None, tuning=False):
         X_train = X_train.reshape((X_train.shape[0], 1, X_train.shape[1]))
         X_test = X_test.reshape((X_test.shape[0], 1, X_test.shape[1]))
 
-        model = Sequential([
-            LSTM(params['lstm_units'], input_shape=(X_train.shape[1], X_train.shape[2])),
-            Dropout(params['dropout_rate']),
-            Dense(y_train.shape[1])
-        ])
-        model.compile(optimizer=params['optimizer'], loss='mean_squared_error')
+        model = Sequential(
+            [
+                LSTM(
+                    params["lstm_units"],
+                    input_shape=(X_train.shape[1], X_train.shape[2]),
+                ),
+                Dropout(params["dropout_rate"]),
+                Dense(y_train.shape[1]),
+            ]
+        )
+        model.compile(optimizer=params["optimizer"], loss="mean_squared_error")
 
-        model.fit(X_train, y_train, epochs=params['epochs'], batch_size=params['batch_size'], verbose=0)
+        model.fit(
+            X_train,
+            y_train,
+            epochs=params["epochs"],
+            batch_size=params["batch_size"],
+            verbose=0,
+        )
         y_pred = model.predict(X_test)
-        
+
         metrics_score[model_name]["MAE"].append(mean_absolute_error(y_test, y_pred))
         metrics_score[model_name]["MSE"].append(mean_squared_error(y_test, y_pred))
-        metrics_score[model_name]["RMSE"].append(np.sqrt(mean_squared_error(y_test, y_pred)))
+        metrics_score[model_name]["RMSE"].append(
+            np.sqrt(mean_squared_error(y_test, y_pred))
+        )
         metrics_score[model_name]["R2 Score"].append(r2_score(y_test, y_pred))
 
     if tuning:
@@ -608,29 +660,31 @@ def train_lstm_model(X, y, params=None, tuning=False):
 
     X = X.reshape((X.shape[0], 1, X.shape[1]))
 
-    model = Sequential([
-        LSTM(params['lstm_units'], input_shape=(X.shape[1], X.shape[2])),
-        Dropout(params['dropout_rate']),
-        Dense(y.shape[1])
-    ])
-    model.compile(optimizer=params['optimizer'], loss='mean_squared_error')
-    model.fit(X, y, epochs=params['epochs'], batch_size=params['batch_size'], verbose=0)
+    model = Sequential(
+        [
+            LSTM(params["lstm_units"], input_shape=(X.shape[1], X.shape[2])),
+            Dropout(params["dropout_rate"]),
+            Dense(y.shape[1]),
+        ]
+    )
+    model.compile(optimizer=params["optimizer"], loss="mean_squared_error")
+    model.fit(X, y, epochs=params["epochs"], batch_size=params["batch_size"], verbose=0)
 
     predictions = model.predict(X)
     predictions = pd.DataFrame(
         scaler_y.inverse_transform(predictions),
         index=y_index,
-        columns=[f"{col}_pred" for col in y_columns]
+        columns=[f"{col}_pred" for col in y_columns],
     )
 
     return model, metrics_score, predictions
 
 
 def attention_mechanism(inputs, input_dim):
-    a = Dense(input_dim, activation='softmax')(inputs)
-    a_probs = Permute((2, 1), name='attention_vec')(a)
+    a = Dense(input_dim, activation="softmax")(inputs)
+    a_probs = Permute((2, 1), name="attention_vec")(a)
     output_attention_mul = Multiply()([inputs, a_probs])
-    
+
     return Flatten()(output_attention_mul)
 
 
@@ -644,13 +698,13 @@ def train_enhanced_lstm_model(X, y, params=None, tuning=False):
 
     if not params:
         params = {
-            'lstm_units': 64,
-            'dropout_rate': 0.3,
-            'learning_rate': 0.001,
-            'epochs': 100,
-            'batch_size': 64
+            "lstm_units": 64,
+            "dropout_rate": 0.3,
+            "learning_rate": 0.001,
+            "epochs": 100,
+            "batch_size": 64,
         }
-        
+
     tscv = TimeSeriesSplit(n_splits=5)
     metrics_score = {model_name: {"MAE": [], "MSE": [], "RMSE": [], "R2 Score": []}}
 
@@ -663,55 +717,86 @@ def train_enhanced_lstm_model(X, y, params=None, tuning=False):
 
         X_train = X_train.reshape((X_train.shape[0], 1, X_train.shape[1]))
         X_test = X_test.reshape((X_test.shape[0], 1, X_test.shape[1]))
-        
-        model = Sequential([
-            Conv1D(filters=64, kernel_size=3, strides=1, padding='same', activation='relu', input_shape=(X_train.shape[1], X_train.shape[2])),
-            Dropout(params['dropout_rate']),
-            Bidirectional(LSTM(params['lstm_units'], return_sequences=True)),
-            Bidirectional(LSTM(params['lstm_units'], return_sequences=True)),
-            Permute((2, 1)), 
-            Dense(X_train.shape[1], activation='softmax'),
-            Permute((2, 1)),
-            Flatten(),
-            Dense(y_train.shape[1])
-        ])
-        model.compile(optimizer=Adam(learning_rate=params['learning_rate']), loss='mean_squared_error')
 
-        model.fit(X_train, y_train, epochs=params['epochs'], batch_size=params['batch_size'], verbose=0)
+        model = Sequential(
+            [
+                Conv1D(
+                    filters=64,
+                    kernel_size=3,
+                    strides=1,
+                    padding="same",
+                    activation="relu",
+                    input_shape=(X_train.shape[1], X_train.shape[2]),
+                ),
+                Dropout(params["dropout_rate"]),
+                Bidirectional(LSTM(params["lstm_units"], return_sequences=True)),
+                Bidirectional(LSTM(params["lstm_units"], return_sequences=True)),
+                Permute((2, 1)),
+                Dense(X_train.shape[1], activation="softmax"),
+                Permute((2, 1)),
+                Flatten(),
+                Dense(y_train.shape[1]),
+            ]
+        )
+        model.compile(
+            optimizer=Adam(learning_rate=params["learning_rate"]),
+            loss="mean_squared_error",
+        )
+
+        model.fit(
+            X_train,
+            y_train,
+            epochs=params["epochs"],
+            batch_size=params["batch_size"],
+            verbose=0,
+        )
         y_pred = model.predict(X_test)
-        
+
         metrics_score[model_name]["MAE"].append(mean_absolute_error(y_test, y_pred))
         metrics_score[model_name]["MSE"].append(mean_squared_error(y_test, y_pred))
-        metrics_score[model_name]["RMSE"].append(np.sqrt(mean_squared_error(y_test, y_pred)))
+        metrics_score[model_name]["RMSE"].append(
+            np.sqrt(mean_squared_error(y_test, y_pred))
+        )
         metrics_score[model_name]["R2 Score"].append(r2_score(y_test, y_pred))
-    
+
     if tuning:
         return np.mean(metrics_score[model_name]["MSE"])
-    
+
     X, scaler_X = min_max_scale_features(X)
     y, scaler_y = min_max_scale_features(y)
-    
+
     X = X.reshape((X.shape[0], 1, X.shape[1]))
-    
-    model = Sequential([
-            Conv1D(filters=64, kernel_size=3, strides=1, padding='same', activation='relu', input_shape=(X.shape[1], X.shape[2])),
-            Dropout(params['dropout_rate']),
-            Bidirectional(LSTM(params['lstm_units'], return_sequences=True)),
-            Bidirectional(LSTM(params['lstm_units'], return_sequences=True)),
-            Permute((2, 1)), 
-            Dense(X.shape[1], activation='softmax'),
+
+    model = Sequential(
+        [
+            Conv1D(
+                filters=64,
+                kernel_size=3,
+                strides=1,
+                padding="same",
+                activation="relu",
+                input_shape=(X.shape[1], X.shape[2]),
+            ),
+            Dropout(params["dropout_rate"]),
+            Bidirectional(LSTM(params["lstm_units"], return_sequences=True)),
+            Bidirectional(LSTM(params["lstm_units"], return_sequences=True)),
+            Permute((2, 1)),
+            Dense(X.shape[1], activation="softmax"),
             Permute((2, 1)),
             Flatten(),
-            Dense(y.shape[1])
-        ])
-    model.compile(optimizer=Adam(learning_rate=params['learning_rate']), loss='mean_squared_error')
-    model.fit(X, y, epochs=params['epochs'], batch_size=params['batch_size'], verbose=0)
-    
+            Dense(y.shape[1]),
+        ]
+    )
+    model.compile(
+        optimizer=Adam(learning_rate=params["learning_rate"]), loss="mean_squared_error"
+    )
+    model.fit(X, y, epochs=params["epochs"], batch_size=params["batch_size"], verbose=0)
+
     predictions = model.predict(X)
     predictions = pd.DataFrame(
         scaler_y.inverse_transform(predictions),
         index=y_index,
-        columns=[f"{col}_pred" for col in y_columns]
+        columns=[f"{col}_pred" for col in y_columns],
     )
 
     return model, metrics_score, predictions
@@ -728,5 +813,5 @@ train_models = {
     "KNN": train_knn,
     "DecisionTree": train_decision_tree,
     "LSTM": train_lstm_model,
-    "EnhancedLSTM": train_enhanced_lstm_model
+    "EnhancedLSTM": train_enhanced_lstm_model,
 }

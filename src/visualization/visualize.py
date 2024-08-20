@@ -88,9 +88,7 @@ def two_line_plot(data, col1, col2, building_id):
     ax1.tick_params(axis="y", labelcolor=color1)
 
     ax2 = ax1.twinx()
-    ax2.plot(
-        data.index, data[col2], label=col2, color=color2, linestyle="--"
-    )
+    ax2.plot(data.index, data[col2], label=col2, color=color2, linestyle="--")
     ax2.set_ylabel(col2, color=color2)
     ax2.tick_params(axis="y", labelcolor=color2)
 
@@ -174,14 +172,17 @@ def feature_importance_plot(model_name, feat_df, col, building_id):
 # Plot LSTM History
 def plot_training_history(history, building_id):
     fig, ax = plt.subplots(figsize=(12, 6))
-    ax.plot(history.history['loss'], label='Training Loss', color='tab:blue')
-    ax.plot(history.history['val_loss'], label='Validation Loss', color='tab:orange')
-    
-    ax.set_title(f'Training and Validation Loss for Building {building_id}')
-    ax.set_xlabel('Epoch')
-    ax.set_ylabel('Loss')
+    ax.plot(history.history["loss"], label="Training Loss", color="tab:blue")
+    ax.plot(history.history["val_loss"], label="Validation Loss", color="tab:orange")
+
+    ax.set_title(f"Training and Validation Loss for Building {building_id}")
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("Loss")
     ax.legend()
-    
+
     save_figure(
-        fig, building_id, "training_history_plots", f"training_validation_loss_{building_id}"
+        fig,
+        building_id,
+        "training_history_plots",
+        f"training_validation_loss_{building_id}",
     )
