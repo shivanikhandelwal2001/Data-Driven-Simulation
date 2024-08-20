@@ -18,7 +18,7 @@ test_start_date = '2014-12-01'
 test_end_date = '2015-03-31'
 
 
-def make_multi_step_prediction_horizon(model, X_test, scaler_X, scaler_y, y_test_columns, n_steps=None, lags=2):
+def make_multi_step_prediction_horizon(model, X_test, y_test_columns, n_steps=None, lags=2):
     """
     Make multi-step predictions for a given prediction horizon.
     """
@@ -38,8 +38,8 @@ def make_multi_step_prediction_horizon(model, X_test, scaler_X, scaler_y, y_test
                 if step - l >= 0:
                     X_test.loc[X_test.index[i+step], lagged_features[f"lags_{l}"]] = predictions_df.loc[X_test.index[i+step - l], :].values
                     
-            x_scale = scaler_X.transform(X_test.loc[X_test.index[i+step], :].values.reshape(1, -1))
-            predictions_df.loc[X_test.index[i+step]] = scaler_y.inverse_transform(model.predict(x_scale))
+            x_row = X_test.loc[X_test.index[i+step], :].values.reshape(1, -1)
+            predictions_df.loc[X_test.index[i+step]] = model.predict(x_row)
             
     return predictions_df
 
@@ -109,27 +109,30 @@ def get_predictions(building_id, data):
         if any(col.endswith(word) for word in ["Air_temperature", "Relative_humidity"])
     ]
     
+    model, X_columns, y_columns, scaler_X, scaler_y = predict_model.load_saved_model(building_id, model_name)
+    
     X, y = data.drop(columns=target_columns), data[target_columns]
 
-    X_train = X[(X.index < test_start_date) | (X.index > test_end_date)]
-    y_train = y[(y.index < test_start_date) | (y.index > test_end_date)]
     X_test = X[(X.index >= test_start_date) & (X.index <= test_end_date)]
     y_test = y[(y.index >= test_start_date) & (y.index <= test_end_date)]
     
+    X_test_scaled = scaler_X.transform(X_test)
+    y_test_scaled = scaler_y.transform(y_test)
+    
+    X_test_scaled_df = pd.DataFrame(X_test_scaled, index=X_test.index, columns=X_test.columns)
+    y_test_scaled_df = pd.DataFrame(y_test_scaled, index=y_test.index, columns=y_test.columns)
     
     horizons = [1, 2+1, 6+1, 12+1, 18+1, 24+1, 48+1, 96+1]
-    
-    model, X_columns, y_columns, scaler_X, scaler_y = predict_model.load_saved_model(building_id, model_name)
 
     metrics_df = pd.DataFrame(columns=["Prediction Horizon", "MAE", "MSE", "RMSE", "R2 Score"])
 
     for h in horizons:
-        y_multi_step = make_multi_step_prediction_horizon(model, X_test.copy(), scaler_X, scaler_y, y_test_columns=y_columns, n_steps=h)
+        y_multi_step = make_multi_step_prediction_horizon(model, X_test_scaled_df, y_test_columns=y_columns, n_steps=h)
 
-        mae = mean_absolute_error(y_test, y_multi_step)
-        mse = mean_squared_error(y_test, y_multi_step)
-        rmse = np.sqrt(mean_squared_error(y_test, y_multi_step))
-        r2_s = r2_score(y_test, y_multi_step)
+        mae = mean_absolute_error(y_test_scaled, y_multi_step)
+        mse = mean_squared_error(y_test_scaled, y_multi_step)
+        rmse = np.sqrt(mean_squared_error(y_test_scaled, y_multi_step))
+        r2_s = r2_score(y_test_scaled, y_multi_step)
 
         print(f"{int(h/2)} Hour Horizon Prediction:")
         print("MAE: ", mae)
@@ -139,7 +142,10 @@ def get_predictions(building_id, data):
         print("*********************\n")
         
         metrics_df.loc[len(metrics_df)] = [int(h/2), mae, mse, rmse, r2_s]
-        y_multi_step.to_csv(f"reports/multistep_predictions/{building_id}_{model_name}_predictions_{int(h/2)}h.csv", index=False)
+        
+        y_multi_step_inverse = scaler_y.inverse_transform(y_multi_step)
+        y_multi_step_df = pd.DataFrame(y_multi_step_inverse, index=y_test.index, columns=y_columns)
+        y_multi_step_df.to_csv(f"reports/multistep_predictions/{building_id}_{model_name}_predictions_{int(h/2)}h.csv", index=False)
     
     metrics_df.to_csv(f"reports/multistep_predictions/{building_id}_{model_name}_metrics.csv", index=False)
     
@@ -147,4 +153,4 @@ def get_predictions(building_id, data):
 for building_id in building_ids:
     data = train_model.load_processed_data(building_id)
     train_final_model(building_id, data)
-    # get_predictions(building_id, data)
+    get_predictions(building_id, data)

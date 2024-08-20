@@ -1,0 +1,38 @@
+
+\begin{table}[h!]
+    \centering
+    \caption{Performance metrics of the linear regression model for different prediction horizons for Buildings A, B, and C.}
+    \label{tab:prediction_horizons}
+    \begin{tabular}{lcccc}
+    \hline
+    \textbf{Building} & \textbf{Prediction Horizon} & \textbf{MAE} & \textbf{RMSE} & \textbf{R$^2$ Score} \\ \hline
+\multirow{8}{*}{Building A}& One-step (30 min) & 0.0084 & 0.0158 & 0.9848 \\
+& 1-hour & 0.0134 & 0.0231 & 0.9686 \\
+& 3-hour & 0.0251 & 0.0392 & 0.9118 \\
+& 6-hour & 0.0385 & 0.0553 & 0.8304 \\
+& 9-hour & 0.0480 & 0.0654 & 0.7709 \\
+& 12-hour & 0.0548 & 0.0720 & 0.7272 \\
+& 24-hour & 0.0630 & 0.0807 & 0.6581 \\
+& 48-hour & 0.0717 & 0.0890 & 0.5806 \\
+\hline
+\multirow{8}{*}{Building B}& One-step (30 min) & 0.0090 & 0.0204 & 0.9615 \\
+& 1-hour & 0.0158 & 0.0319 & 0.8947 \\
+& 3-hour & 0.0295 & 0.0488 & 0.7307 \\
+& 6-hour & 0.0420 & 0.0624 & 0.5460 \\
+& 9-hour & 0.0502 & 0.0713 & 0.3845 \\
+& 12-hour & 0.0561 & 0.0768 & 0.2679 \\
+& 24-hour & 0.0653 & 0.0872 & 0.0199 \\
+& 48-hour & 0.0758 & 0.0986 & -0.2746 \\
+\hline
+\multirow{8}{*}{Building C}& One-step (30 min) & 0.0078 & 0.0170 & 0.9788 \\
+& 1-hour & 0.0145 & 0.0300 & 0.9424 \\
+& 3-hour & 0.0270 & 0.0470 & 0.8581 \\
+& 6-hour & 0.0387 & 0.0598 & 0.7584 \\
+& 9-hour & 0.0476 & 0.0694 & 0.6635 \\
+& 12-hour & 0.0544 & 0.0744 & 0.6027 \\
+& 24-hour & 0.0633 & 0.0826 & 0.4976 \\
+& 48-hour & 0.0714 & 0.0925 & 0.3461 \\
+\hline
+
+    \end{tabular}
+\end{table}
