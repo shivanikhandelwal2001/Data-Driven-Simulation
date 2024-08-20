@@ -1,19 +1,19 @@
+import warnings
 from abc import ABCMeta, abstractmethod
 from typing import Dict, Optional, Tuple, Type, Union
-import warnings
+
 import numpy as np
 import pandas as pd
 from pandas.tseries.frequencies import to_offset
 from scipy import optimize
 from scipy.special import inv_boxcox
 from scipy.stats import boxcox, variation
-from src.features.seasonal import STL, FourierDecomposition
-from src.features.stationary_utils import (
-    check_heteroscedastisticity,
-    check_seasonality,
-    check_trend,
-)
+
 from src.features.data_utils import is_datetime_dtypes
+from src.features.seasonal import STL, FourierDecomposition
+from src.features.stationary_utils import (check_heteroscedastisticity,
+                                           check_seasonality, check_trend)
+
 
 def check_input(y: pd.Series) -> Union[pd.Series, np.ndarray]:
     assert isinstance(

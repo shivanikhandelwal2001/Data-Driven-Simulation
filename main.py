@@ -1,10 +1,10 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
+from joblib import dump
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from joblib import dump
-from src.models import train_model, predict_model
 
+from src.models import predict_model, train_model
 
 building_ids = [
     "Building01",

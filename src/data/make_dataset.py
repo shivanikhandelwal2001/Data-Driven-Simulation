@@ -1,5 +1,6 @@
-import pandas as pd
 import collections
+
+import pandas as pd
 from lxml import etree
 
 # Constants for file paths

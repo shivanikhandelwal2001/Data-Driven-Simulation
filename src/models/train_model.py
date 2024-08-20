@@ -1,25 +1,24 @@
-import pandas as pd
-from sklearn.linear_model import LinearRegression, RidgeCV, MultiTaskLassoCV
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import TimeSeriesSplit
-from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
-from xgboost import XGBRegressor
-from sklearn.neural_network import MLPRegressor
-from sklearn.preprocessing import MinMaxScaler
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout
-from tensorflow.keras.optimizers import Adam
-from sklearn.neighbors import KNeighborsRegressor
-from sklearn.tree import DecisionTreeRegressor
-from src.models import predict_model
-from sklearn.metrics import mean_squared_error
 import numpy as np
-from hyperopt import hp, fmin, tpe, Trials, STATUS_OK
+import pandas as pd
+import tensorflow as tf
+from hyperopt import STATUS_OK, Trials, fmin, hp, tpe
 from hyperopt.pyll.base import scope
-from src.visualization import visualize
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from joblib import dump
+from sklearn.ensemble import ExtraTreesRegressor, RandomForestRegressor
+from sklearn.linear_model import LinearRegression, MultiTaskLassoCV, RidgeCV
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.model_selection import TimeSeriesSplit
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.neural_network import MLPRegressor
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.tree import DecisionTreeRegressor
+from tensorflow.keras.layers import Dense, Dropout
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.optimizers import Adam
+from xgboost import XGBRegressor
+
+from src.models import predict_model
+from src.visualization import visualize
 
 # tf.config.set_visible_devices([], 'GPU')
 
@@ -545,13 +544,15 @@ def define_hyperparameters_space(model_name):
     return space
 
 
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, LSTM, Dropout, Bidirectional, Conv1D, Permute, Multiply, Lambda, TimeDistributed, Flatten
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import EarlyStopping
 import numpy as np
 import pandas as pd
 import tensorflow.keras.backend as K
+from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.layers import (LSTM, Bidirectional, Conv1D, Dense,
+                                     Dropout, Flatten, Lambda, Multiply,
+                                     Permute, TimeDistributed)
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.optimizers import Adam
 
 
 def train_lstm_model(X, y, params=None, tuning=False):

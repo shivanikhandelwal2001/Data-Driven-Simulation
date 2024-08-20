@@ -1,15 +1,15 @@
-from src.data import make_dataset
-from src.data import pre_processing
-from src.visualization import visualize
-from src.features import build_features
-from src.models import train_model, predict_model
-from hyperopt import hp, fmin, tpe, Trials
-from joblib import Parallel, delayed, load
 import json
 import os
-import pandas as pd
 import time
 
+import pandas as pd
+from hyperopt import Trials, fmin, hp, tpe
+from joblib import Parallel, delayed, load
+
+from src.data import make_dataset, pre_processing
+from src.features import build_features
+from src.models import predict_model, train_model
+from src.visualization import visualize
 
 model_names = [
     "LinearRegression",

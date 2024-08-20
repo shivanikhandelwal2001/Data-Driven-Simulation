@@ -1,16 +1,16 @@
 import os
+
 import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import seaborn as sns
-import pandas as pd
 import numpy as np
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+import seaborn as sns
 import statsmodels.api as sm
 from plotly.subplots import make_subplots
-import plotly.graph_objects as go
-import plotly.express as px
-
 
 plt.rcParams.update(
     {

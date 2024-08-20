@@ -1,21 +1,25 @@
-import warnings
-from statsmodels.tsa.stattools import adfuller, kpss
-import pandas as pd
-import numpy as np
 import math
+import warnings
+
+import numpy as np
+import pandas as pd
+from statsmodels.tsa.stattools import adfuller, kpss
+
 try:
     import pymannkendall as mk
     MANN_KENDALL_INSTALLED = True
 except ImportError:
     MANN_KENDALL_INSTALLED = False
 from collections import namedtuple
-from scipy.signal import argrelmax
-from scipy.stats import norm
+
 import scipy.stats as stats
 # from src.transforms.target_transformations import AdditiveDifferencingTransformer, MultiplicativeDifferencingTransformer, LogTransformer, BoxCoxTransformer, YeoJohnsonTransformer, DetrendingTransformer
 import statsmodels.api as sm
+from scipy.signal import argrelmax
+from scipy.stats import norm
 from statsmodels.stats.diagnostic import het_white
 from statsmodels.tsa.stattools import acf
+
 
 def _check_convert_y(y):
     assert not np.any(np.isnan(y)), "`y` should not have any nan values"

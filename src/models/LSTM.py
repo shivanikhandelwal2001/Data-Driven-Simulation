@@ -1,17 +1,16 @@
-import pandas as pd
-import os
 import datetime
+import os
+
 import IPython
 import IPython.display
-import numpy as np
-import tensorflow as tf
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import seaborn as sns
-
+import tensorflow as tf
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 # ACF and PACF
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
-
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 PROCESSED_DATA_PATH = "../../data/processed/"
 
