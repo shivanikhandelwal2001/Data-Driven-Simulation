@@ -3,8 +3,8 @@ import os
 import time
 
 import pandas as pd
-from hyperopt import Trials, fmin, hp, tpe
-from joblib import Parallel, delayed, load
+from hyperopt import Trials, fmin, tpe
+from joblib import Parallel, delayed
 
 from src.data import make_dataset, pre_processing
 from src.features import build_features
@@ -73,6 +73,11 @@ def preprocess_and_feature_engineer(building_id, sub_data, additional_features):
 
     data = build_features.check_nan_values(data, remove=True)
     data_imputed = build_features.fill_missing_values(data)
+
+    cols = [col for col in data_imputed.columns if col != "Gas_volume"]
+    cols.append("Gas_volume")
+
+    data_imputed = data_imputed.reindex(columns=cols)
 
     build_features.save_processed_data(data_imputed, building_id)
 
@@ -245,6 +250,6 @@ features = [
 
 # Process all buildings
 Parallel(n_jobs=-1)(
-    delayed(process_all_buildings)(building_id, features, process=False)
+    delayed(process_all_buildings)(building_id, features, process=True)
     for building_id in building_ids
 )

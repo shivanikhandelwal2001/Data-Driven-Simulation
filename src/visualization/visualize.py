@@ -5,12 +5,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 import seaborn as sns
 import statsmodels.api as sm
-from plotly.subplots import make_subplots
 
 plt.rcParams.update(
     {
@@ -39,10 +35,7 @@ def save_figure(fig, building_id, subdirectory, file_name):
     file_path = os.path.join(full_path, f"{file_name}.png")
     fig.tight_layout()
 
-    if isinstance(fig, go.Figure):
-        fig.write_image(file_path)
-    else:
-        fig.savefig(file_path, bbox_inches="tight")
+    fig.savefig(file_path, bbox_inches="tight")
 
     plt.close(fig)
 
