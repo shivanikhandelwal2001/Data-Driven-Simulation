@@ -90,10 +90,10 @@ def train_final_model(building_id, data):
         columns=y.columns,
     )
 
-    mae = mean_absolute_error(y_test, y_pred)
-    mse = mean_squared_error(y_test, y_pred)
-    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
-    r2_s = r2_score(y_test, y_pred)
+    mae = mean_absolute_error(y_test_scale, y_pred_scale)
+    mse = mean_squared_error(y_test_scale, y_pred_scale)
+    rmse = np.sqrt(mean_squared_error(y_test_scale, y_pred_scale))
+    r2_s = r2_score(y_test_scale, y_pred_scale)
 
     print("One step Prediction:")
     print("MAE: ", mae)
@@ -147,7 +147,7 @@ def get_predictions(building_id, data):
         y_test_scaled, index=y_test.index, columns=y_test.columns
     )
 
-    horizons = [1, 2 + 1, 6 + 1, 12 + 1, 18 + 1, 24 + 1, 48 + 1, 96 + 1]
+    horizons = [1, 2 + 1, 6 + 1, 12 + 1, 18 + 1, 24 + 1, 48 + 1, 96 + 1, len(y_test)]
 
     metrics_df = pd.DataFrame(
         columns=["Prediction Horizon", "MAE", "MSE", "RMSE", "R2 Score"]
